@@ -15,15 +15,15 @@ def decode(
     """Perform Viterbi decoding on a sequence of categorical distributions
     
     Args:
-        observation: shape=(T, m)
+        observation: shape=(frames, states)
             Sequence of log-categorical distributions
-        transition: shape=(m, m)
+        transition: shape=(states, states)
             Log-categorical transition matrix
-        initial: shape=(m,)
+        initial: shape=(states,)
             Log-categorical initial distribution over states
 
     Returns:
-        indices: shape=(T,)
+        indices: shape=(frames,)
             The decoded bin indices
     """
     frames, states = observation.shape
