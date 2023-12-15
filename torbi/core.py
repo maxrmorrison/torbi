@@ -11,20 +11,28 @@ import torch
 def decode(
     observation: torch.Tensor,
     transition: Optional[torch.Tensor] = None,
-    initial: Optional[torch.Tensor] = None) -> torch.Tensor:
-    """Perform Viterbi decoding on a sequence of categorical distributions
-    
-    Args:
-        observation: shape=(frames, states)
-            Sequence of log-categorical distributions
-        transition: shape=(states, states)
-            Log-categorical transition matrix
-        initial: shape=(states,)
-            Log-categorical initial distribution over states
+    initial: Optional[torch.Tensor] = None,
+    max_chunk_size: Optional[int] = None
+) -> torch.Tensor:
+    """Perform Viterbi decoding on a sequence of distributions
 
-    Returns:
-        indices: shape=(frames,)
+    Arguments
+        observation
+            Sequence of log-categorical distributions
+            shape=(frames, states)
+        transition
+            Log-categorical transition matrix
+            shape=(states, states)
+        initial
+            Log-categorical initial distribution over states
+            shape=(states,)
+        max_chunk_size
+            Size of each decoding chunk; O(nlogn) -> O(nlogk)
+
+    Returns
+        indices
             The decoded bin indices
+            shape=(frames,)
     """
     frames, states = observation.shape
     device = observation.device
@@ -42,12 +50,44 @@ def decode(
             1. / states,
             dtype=observation.dtype,
             device=device)
-    
-    # Forward pass
-    posterior, memory = forward(observation, transition, initial)
 
-    # Backward pass
-    return backward(posterior, memory)
+    # Chunked Viterbi decoding
+    if max_chunk_size and max_chunk_size > len(observation):
+
+        # Forward pass of first chunk
+        posterior, memory = forward(
+            observation[:max_chunk_size],
+            transition,
+            initial)
+
+        indices = []
+        for i in range(0, len(observation), max_chunk_size):
+
+            # Backward pass
+            indices.append(backward(posterior, memory))
+
+            # Update initial to the posterior of the last chunk
+            initial = torch.softmax(posterior[-1])
+
+            # Next chunk
+            posterior, memory = forward(
+                observation[i:i + max_chunk_size],
+                transition,
+                initial)
+
+        # Backward pass of last chunk
+        indices.append(backward(posterior, memory))
+
+        return torch.cat(indices)
+
+    # No chunking
+    else:
+
+        # Forward pass
+        posterior, memory = forward(observation, transition, initial)
+
+        # Backward pass
+        return backward(posterior, memory)
 
 
 ###############################################################################
@@ -63,11 +103,11 @@ def backward(posterior, memory):
         torch.argmax(posterior[-1]),
         dtype=torch.int,
         device=posterior.device)
-        
+
     # Backward
     for t in range(indices.shape[0] - 2, -1, -1):
         indices[t] = memory[t + 1, indices[t + 1]]
-    
+
     return indices
 
 
@@ -79,7 +119,7 @@ def forward(observation, transition, initial):
         observation.shape,
         dtype=torch.int,
         device=observation.device)
-    
+
     # Add prior to first frame
     posterior[0] = observation[0] + initial
 
