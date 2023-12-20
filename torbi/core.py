@@ -1,6 +1,7 @@
 import math
 from typing import Optional
 
+import librosa
 import numpy as np
 import torch
 import torchutil
@@ -13,6 +14,7 @@ from torbi.ops import cforward
 ###############################################################################
 
 
+LIBROSA = False
 CYTHON = True
 
 
@@ -67,7 +69,7 @@ def decode(
 
         # Ensure initial probabilities are in log space
         else:
-            if not log_probs:
+            if not log_probs and not LIBROSA:
                 initial = torch.log(initial)
             initial = initial.cpu().numpy().astype(np.float32)
 
@@ -80,88 +82,99 @@ def decode(
 
         # Ensure transition probabilities are in log space
         else:
-            if not log_probs:
+            if not log_probs and not LIBROSA:
                 transition = torch.log(transition)
             transition = transition.cpu().numpy().astype(np.float32)
 
         # Ensure observation probabilities are in log space
-        if not log_probs:
+        if not log_probs and not LIBROSA:
             observation = torch.log(observation)
         observation = observation.cpu().numpy().astype(np.float32)
 
-    # Chunked Viterbi decoding
-    if max_chunk_size and max_chunk_size < len(observation):
+    if LIBROSA:
+        with torchutil.time.context('forward-backward'):
+            indices = librosa.sequence.viterbi(
+                observation.T,
+                transition,
+                p_init=initial
+            ).astype(np.int32)
 
-        with torchutil.time.context('setup'):
+    else:
 
-            # Initialize intermediate arrays
-            shape = (max_chunk_size, observation.shape[1])
-            posterior = np.zeros(shape, dtype=np.float32)
-            memory = np.zeros(shape, dtype=np.int32)
+        # Chunked Viterbi decoding
+        if max_chunk_size and max_chunk_size < len(observation):
 
-        indices = []
-        for i in range(0, len(observation), max_chunk_size):
-            size = min(len(observation) - i, max_chunk_size)
+            with torchutil.time.context('setup'):
+
+                # Initialize intermediate arrays
+                shape = (max_chunk_size, observation.shape[1])
+                posterior = np.zeros(shape, dtype=np.float32)
+                memory = np.zeros(shape, dtype=np.int32)
+                probability = np.zeros((states, states), dtype=np.float32)
+
+            indices = []
+            for i in range(0, len(observation), max_chunk_size):
+                size = min(len(observation) - i, max_chunk_size)
+
+                with torchutil.time.context('forward'):
+
+                    # Forward pass of first chunk
+                    args = (
+                        observation[i:i + max_chunk_size],
+                        transition,
+                        initial,
+                        posterior,
+                        memory,
+                        probability)
+                    if CYTHON:
+                        cforward(*args, size, states)
+                    else:
+                        forward(*args)
+
+                with torchutil.time.context('backward'):
+
+                    # Backward pass
+                    indices.append(backward(posterior, memory, size))
+
+                with torchutil.time.context('next'):
+
+                    # Update initial to the posterior of the last chunk
+                    e_x = np.exp(posterior[-1] - np.max(posterior[-1]))
+                    initial = np.log(e_x / e_x.sum())
+
+            # Concatenate chunks
+            indices = np.concatenate(indices)
+
+        # No chunking
+        else:
+
+            with torchutil.time.context('setup'):
+
+                # Initialize
+                posterior = np.zeros_like(observation)
+                memory = np.zeros(observation.shape, dtype=np.int32)
+                probability = np.zeros((states, states), dtype=np.float32)
 
             with torchutil.time.context('forward'):
 
-                # Forward pass of first chunk
-                args = (
-                    observation[i:i + max_chunk_size],
-                    transition,
-                    initial,
-                    posterior,
-                    memory)
+                # Forward pass
+                args = (observation, transition, initial, posterior, memory, probability)
                 if CYTHON:
-                    cforward(*args, size, states)
+                    cforward(*args, frames, states)
                 else:
                     forward(*args)
+                # print(f'observation:\n{observation}')
+                # print(f'transition:\n{transition}')
+                # print(f'initial:\n{initial}')
+                # print(f'posterior:\n{posterior}')
+                # print(f'memory:\n{memory}')
 
             with torchutil.time.context('backward'):
 
                 # Backward pass
-                indices.append(backward(posterior, memory, size))
+                indices = backward(posterior, memory)
 
-            with torchutil.time.context('next'):
-
-                # Update initial to the posterior of the last chunk
-                e_x = np.exp(posterior[-1] - np.max(posterior[-1]))
-                initial = np.log(e_x / e_x.sum())
-
-        print(torchutil.time.results())
-
-        # Concatenate chunks
-        indices = np.concatenate(indices)
-
-    # No chunking
-    else:
-
-        with torchutil.time.context('setup'):
-
-            # Initialize
-            posterior = np.zeros_like(observation)
-            memory = np.zeros(observation.shape, dtype=np.int32)
-
-        with torchutil.time.context('forward'):
-
-            # Forward pass
-            args = (observation, transition, initial, posterior, memory)
-            if CYTHON:
-                cforward(*args, frames, states)
-                # print(f'observation: {observation}')
-                # print(f'transition: {transition}')
-                # print(f'initial: {initial}')
-                # print(f'posterior: {posterior}')
-                # print(f'memory: {memory}')
-            else:
-                forward(*args)
-
-        with torchutil.time.context('backward'):
-
-            # Backward pass
-            indices = backward(posterior, memory)
-
-        print(torchutil.time.results())
+    print(torchutil.time.results())
 
     return torch.tensor(indices, dtype=torch.int, device=device)
 
@@ -186,24 +199,19 @@ def backward(posterior, memory, size=None):
     return indices
 
 
-def forward(observation, transition, initial, posterior, memory):
+def forward(observation, transition, initial, posterior, memory, probability):
     """Viterbi decoding forward pass"""
     # Add prior to first frame
     posterior[0] = observation[0] + initial
 
     # Forward pass
-    # print(f'transition:\n {transition}')
     for t in range(1, observation.shape[0]):
-        # print(f'posterior-{t - 1}:\n {posterior[t - 1]}')
-        probability = posterior[t - 1] + transition
-        # print(f'probability-{t}:\n {probability}')
+        probability[:] = posterior[t - 1] + transition
+        # print(f'probability-{t}:\n{probability}')
 
         # Update best so far
         for j in range(observation.shape[1]):
             memory[t, j] = np.argmax(probability[j])
             posterior[t, j] = observation[t, j] + probability[j, memory[t, j]]
-
-        # print(f'memory-{t}:\n {memory}')
-    # print(f'posterior-{t}:\n {posterior}')
 
     return posterior, memory

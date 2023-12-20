@@ -1,28 +1,29 @@
 cimport cython
-from cython.parallel import prange
+from cython.parallel cimport prange
 from numpy.math cimport INFINITY
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
+@cython.profile(True)
 cpdef void cforward(
-    float[:, ::1] observation,
-    float[:, ::1] transition,
-    float[::1] initial,
-    float[:, ::1] posterior,
-    int[:, ::1] memory,
+    float[:, :] observation,
+    float[:, :] transition,
+    float[:] initial,
+    float[:, :] posterior,
+    int[:, :] memory,
+    float[:, :] probability,
     int frames,
     int states
-) nogil:
+) noexcept nogil:
     cdef float max_posterior
-    cdef int max_posterior_index
-    cdef int j = 0
+    cdef int i
+    cdef int j
+    cdef int s1
+    cdef int s2
+    cdef int s3
     cdef int t = 1
     cdef int tm1 = 0
-
-    # Initialize intermediate probabilities
-    cdef array.array probability = array.array('f')
-    memset(probability.data.as_voidptr, 0, 4 * states * states)
 
     # Add prior to first frame
     for i in prange(states, nogil=True):
@@ -31,32 +32,27 @@ cpdef void cforward(
     # Forward pass
     while t < frames:
 
-        # Compute all possible updates
         for s1 in prange(states, nogil=True):
-            for s2 in prange(states, nogil=True):
-                probability[s1, s2] = posterior[t, s1] + transition[s1, s2]
 
-
-
-            memory[t, s1] =
-
-        # Get maximum of posterior distribution
-        for k in prange(states, nogil=True):
-            value = posterior[t, k] + transition[j, k]
-            if value > max_posterior:
-                max_posterior = value
-                max_posterior_index = k
+            # Compute all possible updates
+            for s2 in range(states):
+                probability[s2, s1] = posterior[tm1, s1] + transition[s2, s1]
 
         j = 0
         while j < states:
 
-            # Save index of maximum for backward pass
-            memory[t1, j] = max_posterior_index
+            # Get optimal greedy update from current state
+            s3 = 0
+            max_posterior = -INFINITY
+            while s3 < states:
+                if probability[j, s3] > max_posterior:
+                    max_posterior = probability[j, s3]
+                    memory[t, j] = s3
+                s3 = s3 + 1
 
             # Update posterior distribution
-            posterior[t1, j] = observation[t1, j] + max_posterior
+            posterior[t, j] = observation[t, j] + max_posterior
 
-            j += 1
-        t += 1
-        tm1 += 1
-
+            j = j + 1
+        t = t + 1
+        tm1 = tm1 + 1
