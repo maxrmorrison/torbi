@@ -5,7 +5,6 @@ from numpy.math cimport INFINITY
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-@cython.profile(True)
 cpdef void cforward(
     float[:, :] observation,
     float[:, :] transition,
