@@ -7,6 +7,10 @@
 
 #include <vector>
 
+#define NUM_THREADS 1024
+#define WARP_SIZE 32
+#define NUM_WARPS 32
+
 __global__ void viterbi_forward_kernel(
     float* __restrict__ observation,
     float* __restrict__ transition,
@@ -29,7 +33,7 @@ void viterbi_cuda_forward(
     int frames,
     int states
 ) {
-    const int threads = 1024;
+    const int threads = NUM_THREADS;
     const dim3 blocks(1);
 
     // Create CUDA events for timing
@@ -67,45 +71,94 @@ __global__ void viterbi_forward_kernel(
     int frames,
     int states
 ) {
-    float max_posterior;
+    // save to avoid re-computation
     int states2 = states*states;
+    // the id of the current thread
+    int thread_id = threadIdx.x;
+    // the id of the warp to which this thread belongs
+    int warp_id = thread_id / WARP_SIZE;
+    int thread_warp_id = threadIdx.x % WARP_SIZE;
+
+    // used in the parallel argmax operations
+    __shared__ float argmax_values[NUM_THREADS];
+    __shared__ int argmax_indices[NUM_THREADS];
 
     // Set initial
-    // auto start = std::chrono::high_resolution_clock::now();
-    for (int i=threadIdx.x; i<states; i+=blockDim.x) {
+    for (int i=thread_id; i<states; i+=NUM_THREADS) {
         posterior[i] = observation[i] + initial[i];
     }
     __syncthreads();
-    // auto stop = std::chrono::high_resolution_clock::now();
-    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-    // std::cout << "Time taken by init: " << static_cast<double>(duration.count()) / 1e6 << " seconds" << std::endl;
 
     for (int t=1; t<frames; t++) {
         // Forward Pass
-        for (int i=threadIdx.x; i<states2; i+=blockDim.x) {
-            // note that i = s2*frames+s1
+        for (int i=thread_id; i<states2; i+=NUM_THREADS) {
             int s1 = i % states;
             probability[i] = posterior[(t-1)*states+s1] + transition[i];
         }
         __syncthreads();
 
         // Get optimal
-        for (int j=threadIdx.x; j<states; j+=blockDim.x) {
-            max_posterior = probability[j*states];
-            float best_state = 0;
+        // for (int j=thread_id; j<states; j+=NUM_THREADS) {
+            // max_posterior = probability[j*states];
+            // float best_state = 0;
 
-            for (int s3=1; s3<states; s3++) {
-                if (probability[j*states+s3] > max_posterior) {
-                    max_posterior = probability[j*states+s3];
-                    // memory[t*states+j] = s3;
-                    best_state = s3;
+            // for (int s3=1; s3<states; s3++) {
+            //     if (probability[j*states+s3] > max_posterior) {
+            //         max_posterior = probability[j*states+s3];
+            //         // memory[t*states+j] = s3;
+            //         best_state = s3;
+            //     }
+            // }
+
+            // memory[t*states+j] = best_state;
+
+            // posterior[t*states+j] = observation[t*states+j] + max_posterior;
+        // }
+
+        // Iterate rows by warp (each warp gets assigned a row)
+        for (int j=warp_id; j<states; j+=NUM_WARPS) {
+            
+            // Indices start out as just 0-WARP_SIZE for the first WARP_SIZE elements in the array
+            argmax_indices[thread_id] = thread_warp_id;
+            // Values start as the first WARP_SIZE elements in the row, with row selected by j
+            argmax_values[thread_id] = probability[j*states+thread_warp_id];
+            __syncwarp();
+
+            // Slide the warp over the row in a linear argmax search (parallelized by threads within the warp)
+            // Note that we start here offset by the WARP_SIZE since we already initialized using the first chunk
+            for (int i=thread_warp_id+WARP_SIZE; i<states; i+=WARP_SIZE) {
+                // Get the new value from the current row at the current offset
+                float new_value = probability[j*states+i];
+                if (new_value > argmax_values[thread_id]) {
+                    argmax_indices[thread_id] = i;
+                    argmax_values[thread_id] = new_value;
                 }
             }
+            __syncwarp();
 
-            memory[t*states+j] = best_state;
+            // Perform reduction
+            // This is the worst possible way to do this, I just hope it works.
+            // if (thread_warp_id == 0) {
+            //     int max_index = argmax_indices[warp_id*WARP_SIZE];
+            //     float max_value = argmax_values[warp_id*WARP_SIZE];
+            //     for (int i=warp_id*WARP_SIZE+1; i<(warp_id+1)*WARP_SIZE; i++) {
+            //         float new_value = argmax_values[i];
+            //         if (new_value > max_value) {
+            //             max_value = new_value;
+            //             max_index = argmax_indices[i];
+            //         }
+            //     }
 
-            posterior[t*states+j] = observation[t*states+j] + max_posterior;
+            //     memory[t*states+j] = max_index;
+
+            //     posterior[t*states+j] = observation[t*states+j] + max_value;
+            // }
+            // __syncwarp();
+
+            // This is a first attempt at a parallel reduction
+            for (int index=thread_warp_id*2; index<WARP_SIZE; index*=2) {
+            }
         }
-        __syncthreads();
+        __syncthreads(); 
     }
 }

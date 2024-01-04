@@ -209,8 +209,8 @@ def decode(
                 # print(f'observation:\n{observation}')
                 # print(f'transition:\n{transition}')
                 # print(f'initial:\n{initial}')
-                # print(f'posterior:\n{posterior}')
-                # print(f'memory:\n{memory}')
+                print(f'posterior:\n{posterior}')
+                print(f'memory:\n{memory}')
 
             with torchutil.time.context('backward'):
 
@@ -219,8 +219,9 @@ def decode(
 
     print(torchutil.time.results())
 
-    out = torch.tensor(indices, dtype=torch.int, device=device)
+    out = torch.tensor(indices, dtype=torch.int)
     torch.save(out, '/hemera-storage1/pardo/promo/torbi-indices.pt')
+    print(out)
     raise ValueError('one and done')
     return torch.tensor(indices, dtype=torch.int, device=device)
 
