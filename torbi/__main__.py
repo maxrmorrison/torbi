@@ -18,7 +18,7 @@ def parse_args():
         type=Path,
         nargs='+',
         required=True,
-        help='Time-varying log-categorical distribution files')
+        help='Time-varying categorical distribution files')
     parser.add_argument(
         '--output_files',
         type=Path,
@@ -28,11 +28,11 @@ def parse_args():
     parser.add_argument(
         '--transition_file',
         type=Path,
-        help='Log-categorical transition matrix file; defaults to uniform')
+        help='Categorical transition matrix file; defaults to uniform')
     parser.add_argument(
         '--initial_file',
         type=Path,
-        help='Log-categorical initial distribution file; defaults to uniform')
+        help='Categorical initial distribution file; defaults to uniform')
     parser.add_argument(
         '--log_probs',
         action='store_true',

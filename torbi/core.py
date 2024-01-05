@@ -28,13 +28,13 @@ def from_probabilities(
 
     Arguments
         observation
-            Time-varying log-categorical distribution
+            Time-varying categorical distribution
             shape=(frames, states)
         transition
-            Log-categorical transition matrix; defaults to uniform
+            Categorical transition matrix; defaults to uniform
             shape=(states, states)
         initial
-            Log-categorical initial distribution; defaults to uniform
+            Categorical initial distribution; defaults to uniform
             shape=(states,)
         log_probs
             Whether inputs are in (natural) log space
@@ -179,13 +179,13 @@ def from_file(
 
     Arguments
         input_file
-            Time-varying log-categorical distribution file
+            Time-varying categorical distribution file
             shape=(frames, states)
         transition_file
-            Log-categorical transition matrix file; defaults to uniform
+            Categorical transition matrix file; defaults to uniform
             shape=(states, states)
         initial_file
-            Log-categorical initial distribution file; defaults to uniform
+            Categorical initial distribution file; defaults to uniform
             shape=(states,)
         log_probs
             Whether inputs are in (natural) log space
@@ -217,15 +217,15 @@ def from_file_to_file(
 
     Arguments
         input_file
-            Time-varying log-categorical distribution file
+            Time-varying categorical distribution file
             shape=(frames, states)
         output_file
             File to save decoded indices
         transition_file
-            Log-categorical transition matrix file; defaults to uniform
+            Categorical transition matrix file; defaults to uniform
             shape=(states, states)
         initial_file
-            Log-categorical initial distribution file; defaults to uniform
+            Categorical initial distribution file; defaults to uniform
             shape=(states,)
         log_probs
             Whether inputs are in (natural) log space
@@ -248,15 +248,15 @@ def from_files_to_files(
 
     Arguments
         input_files
-            Time-varying log-categorical distribution files
+            Time-varying categorical distribution files
             shape=(frames, states)
         output_files
             Files to save decoded indices
         transition_file
-            Log-categorical transition matrix file; defaults to uniform
+            Categorical transition matrix file; defaults to uniform
             shape=(states, states)
         initial_file
-            Log-categorical initial distribution file; defaults to uniform
+            Categorical initial distribution file; defaults to uniform
             shape=(states,)
         log_probs
             Whether inputs are in (natural) log space
