@@ -1,3 +1,4 @@
+import functools
 import math
 
 import librosa
@@ -64,34 +65,43 @@ def from_probabilities(
 
 def from_file(
     input_file,
-    transition=None,
-    initial=None,
+    transition_file=None,
+    initial_file=None,
     log_probs=False
 ) -> torch.Tensor:
     """Perform reference Viterbi decoding on a file"""
     observation = torch.load(input_file)
+    if transition_file:
+        transition = torch.load(transition_file)
+    if initial_file:
+        initial = torch.load(initial_file)
     return from_probabilities(observation, transition, initial, log_probs)
 
 
 def from_file_to_file(
     input_file,
     output_file,
-    transition=None,
-    initial=None,
+    transition_file=None,
+    initial_file=None,
     log_probs=False
 ) -> None:
     """Perform reference Viterbi decoding on a file and save"""
-    indices = from_file(input_file, transition, intitial, log_probs)
+    indices = from_file(input_file, transition_file, initial_file, log_probs)
     torch.save(indices, output_file)
 
 
 def from_files_to_files(
     input_files,
     output_files,
-    transition=None,
-    initial=None,
+    transition_file=None,
+    initial_file=None,
     log_probs=False
 ) -> None:
     """Perform reference Viterbi decoding on many files and save"""
+    decode_fn = functools.partial(
+        from_file_to_file,
+        transition_file=transition_file,
+        initial_file=initial_file,
+        log_probs=log_probs)
     for input_file, output_file in zip(input_files, output_files):
-        from_file_to_file(input_file, output_file)
+        decode_fn(input_file, output_file)
