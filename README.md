@@ -40,39 +40,152 @@ install the evaluation dependencies
 ### Application programming interface
 
 ```python
+# TODO - usage
 ```
 
 
 #### `torbi.from_probabilities`
 
 ```python
+def from_probabilities(
+    observation: torch.Tensor,
+    transition: Optional[torch.Tensor] = None,
+    initial: Optional[torch.Tensor] = None,
+    log_probs: bool = False,
+    gpu: Optional[int] = None
+) -> torch.Tensor:
+    """Decode a time-varying categorical distribution
+
+    Arguments
+        observation
+            Time-varying log-categorical distribution
+            shape=(frames, states)
+        transition
+            Log-categorical transition matrix; defaults to uniform
+            shape=(states, states)
+        initial
+            Log-categorical initial distribution; defaults to uniform
+            shape=(states,)
+        log_probs
+            Whether inputs are in (natural) log space
+        gpu
+            GPU index to use for decoding. Defaults to CPU.
+
+    Returns
+        indices
+            The decoded bin indices
+
 ```
 
 
 #### `torbi.from_file`
 
 ```python
+def from_file(
+    input_file: Union[str, os.PathLike],
+    transition_file: Optional[Union[str, os.PathLike]] = None,
+    initial_file: Optional[Union[str, os.PathLike]] = None,
+    log_probs: bool = False,
+    gpu: Optional[int] = None
+) -> torch.Tensor:
+    """Decode a time-varying categorical distribution file
+
+    Arguments
+        input_file
+            Time-varying log-categorical distribution file
+            shape=(frames, states)
+        transition_file
+            Log-categorical transition matrix file; defaults to uniform
+            shape=(states, states)
+        initial_file
+            Log-categorical initial distribution file; defaults to uniform
+            shape=(states,)
+        log_probs
+            Whether inputs are in (natural) log space
+        gpu
+            GPU index to use for decoding. Defaults to CPU.
+
+    Returns
+        indices
+            The decoded bin indices
+            shape=(frames,)
+    """
 ```
 
 
 #### `torbi.from_file_to_file`
 
 ```python
+def from_file_to_file(
+    input_file: Union[str, os.PathLike],
+    output_file: Union[str, os.PathLike],
+    transition_file: Optional[Union[str, os.PathLike]] = None,
+    initial_file: Optional[Union[str, os.PathLike]] = None,
+    log_probs: bool = False,
+    gpu: Optional[int] = None
+) -> None:
+    """Decode a time-varying categorical distribution file and save
+
+    Arguments
+        input_file
+            Time-varying log-categorical distribution file
+            shape=(frames, states)
+        output_file
+            File to save decoded indices
+        transition_file
+            Log-categorical transition matrix file; defaults to uniform
+            shape=(states, states)
+        initial_file
+            Log-categorical initial distribution file; defaults to uniform
+            shape=(states,)
+        log_probs
+            Whether inputs are in (natural) log space
+        gpu
+            GPU index to use for decoding. Defaults to CPU.
+    """
 ```
 
 
 #### `torbi.from_files_to_files`
 
 ```python
+def from_files_to_files(
+    input_files: List[Union[str, os.PathLike]],
+    output_files: List[Union[str, os.PathLike]],
+    transition_file: Optional[Union[str, os.PathLike]] = None,
+    initial_file: Optional[Union[str, os.PathLike]] = None,
+    log_probs: bool = False,
+    gpu: Optional[int] = None
+) -> None:
+    """Decode time-varying categorical distribution files and save
+
+    Arguments
+        input_files
+            Time-varying log-categorical distribution files
+            shape=(frames, states)
+        output_files
+            Files to save decoded indices
+        transition_file
+            Log-categorical transition matrix file; defaults to uniform
+            shape=(states, states)
+        initial_file
+            Log-categorical initial distribution file; defaults to uniform
+            shape=(states,)
+        log_probs
+            Whether inputs are in (natural) log space
+        gpu
+            GPU index to use for decoding. Defaults to CPU.
+    """
 ```
 
 
 ### Command-line interface
 
 ```python
+# TODO - usage
 ```
 
-**TODO**
+**TODO - docstring**
 
 
 ## Evaluation
