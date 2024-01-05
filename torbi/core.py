@@ -5,7 +5,11 @@ import numpy as np
 import torch
 import torchutil
 
-from torbi.ops import cforward
+from ops import cforward
+from .pytorch import tforward
+#TODO fix this name
+from fastops import cppforward
+from cudaops import forward as cuda_forward
 
 
 ###############################################################################
@@ -13,7 +17,13 @@ from torbi.ops import cforward
 ###############################################################################
 
 
-CYTHON = True
+CYTHON = False
+TORCH = False
+PYBIND = False
+CUDA = False
+
+# Easier way to choose method
+CUDA = True
 
 
 ###############################################################################
@@ -92,12 +102,50 @@ def decode(
 
     with torchutil.time.context('forward'):
 
-        # Forward pass
-        args = (observation, transition, initial, posterior, memory, probability)
-        if CYTHON:
-            cforward(*args, frames, states)
-        else:
-            forward(*args)
+                # Forward pass
+                args = (observation, transition, initial, posterior, memory, probability)
+                if CYTHON:
+                    cforward(*args, frames, states)
+                    # raise ValueError('removed')
+                elif TORCH:
+                    print('copying to GPU')
+                    device = 'cuda:0' #TODO fix
+                    observation = torch.tensor(observation, device=device)
+                    transition = torch.tensor(transition, device=device)
+                    initial = torch.tensor(initial, device=device)
+                    posterior = torch.tensor(posterior, device=device)
+                    memory = torch.tensor(memory, device=device)
+                    probability = torch.tensor(probability, device=device)
+                    args = (observation, transition, initial, posterior, memory, probability)
+                    print('about to do tforward')
+                    with torch.inference_mode():
+                        tforward(*args, frames, states)
+                    posterior = posterior.cpu().numpy()
+                    memory = memory.cpu().numpy()
+                elif PYBIND:
+                    print('starting c++ decode')
+                    cppforward(*args, frames, states)
+                elif CUDA:
+                    print('copying to GPU')
+                    device = 'cuda:0' #TODO fix
+                    observation = torch.tensor(observation, device=device)
+                    transition = torch.tensor(transition, device=device)
+                    initial = torch.tensor(initial, device=device)
+                    posterior = torch.tensor(posterior, device=device)
+                    memory = torch.tensor(memory, device=device)
+                    probability = torch.tensor(probability, device=device)
+                    args = (observation, transition, initial, posterior, memory, probability)
+                    print('about to do cuda forward')
+                    cuda_forward(*args, frames, states)
+                    posterior = posterior.cpu().numpy()
+                    memory = memory.cpu().numpy()
+                else:
+                    forward(*args)
+                # print(f'observation:\n{observation}')
+                # print(f'transition:\n{transition}')
+                # print(f'initial:\n{initial}')
+                print(f'posterior:\n{posterior}')
+                print(f'memory:\n{memory}')
 
     with torchutil.time.context('backward'):
 

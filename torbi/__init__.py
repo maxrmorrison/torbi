@@ -21,3 +21,4 @@ from .config.static import *
 
 
 from .core import *
+from fastops import *

@@ -4,18 +4,41 @@ from numpy.math cimport INFINITY
 from posix.time cimport clock_gettime, timespec, CLOCK_REALTIME
 from libc.stdio cimport printf
 
+import torch
+
+import numpy as np
+cimport numpy as cnp
+
+FLOAT = np.float32
+INT = np.int
+
+ctypedef cnp.float32_t FLOAT_t
+ctypedef cnp.int64_t INT_t
+
+
+# cpdef void cforward(
+#     float[:, :] observation,
+#     float[:, :] transition,
+#     float[:] initial,
+#     float[:, :] posterior,
+#     int[:, :] memory,
+#     float[:, :] probability,
+#     int frames,
+#     int states
+# ) noexcept nogil:
 @cython.boundscheck(False)
 @cython.wraparound(False)
+@cython.cdivision(True)
 cpdef void cforward(
-    float[:, :] observation,
-    float[:, :] transition,
-    float[:] initial,
-    float[:, :] posterior,
-    int[:, :] memory,
-    float[:, :] probability,
-    int frames,
-    int states
-) noexcept nogil:
+   cnp.ndarray[float, ndim=2] observation,
+   cnp.ndarray[float, ndim=2] transition,
+   cnp.ndarray[float, ndim=1] initial,
+   cnp.ndarray[float, ndim=2] posterior,
+   cnp.ndarray[int, ndim=2] memory,
+   cnp.ndarray[float, ndim=2] probability,
+   int frames,
+   int states
+) noexcept:
     cdef float max_posterior
     cdef int i
     cdef int j
@@ -48,10 +71,20 @@ cpdef void cforward(
         start = ts.tv_sec + (ts.tv_nsec / 1000000000.)
 
         for s1 in prange(states, nogil=True):
-
             # Compute all possible updates
             for s2 in range(states):
                 probability[s2, s1] = posterior[tm1, s1] + transition[s2, s1]
+
+        # for i in prange(states**2, nogil=True):
+        #    s1 = i // states
+        #    s2 = i % states
+        #    probability[s2, s1] = posterior[tm1, s1] + transition[s2, s1]
+
+        # for i in prange(states, nogil=True):
+        #    with gil:
+        #        probability[i] = posterior[tm1] + transition[i]
+
+        #probability = posterior[tm1] + transition
 
         clock_gettime(CLOCK_REALTIME, &ts)
         b = b + (ts.tv_sec + (ts.tv_nsec / 1000000000.)) - start
@@ -73,6 +106,7 @@ cpdef void cforward(
 
             # Update posterior distribution
             posterior[t, j] = observation[t, j] + max_posterior
+            return
 
             j = j + 1
         t = t + 1
