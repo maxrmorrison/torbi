@@ -13,7 +13,7 @@ class Metrics:
         self.rpas = [RPA(k) for k in torbi.PITCH_ERROR_THRESHOLDS]
 
     def __call__(self):
-        return {f'rpa-{rpa.threshold}': rpa() for rpa in self.rpas}
+        return {'rpa': {str(rpa.threshold): rpa() for rpa in self.rpas}}
 
     def update(self, predicted, target):
         for rpa in self.rpas:

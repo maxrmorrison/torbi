@@ -1,5 +1,6 @@
 import json
 
+import penn
 import torchutil
 
 import torbi
@@ -36,8 +37,6 @@ def datasets(datasets):
 
         # Run reference Librosa implementation if we haven't yet
         if not all(file.exists() for file in reference_files):
-
-            # Run reference
             torbi.reference.from_files_to_files(input_files, output_files)
 
         # Get location to save output
@@ -59,7 +58,11 @@ def datasets(datasets):
             target = torch.load(target)
             metrics.update(predicted, target)
 
+        # Get speed as real-time-factor (i.e., seconds decoded per second)
+        seconds = penn.convert.frames_to_seconds(metrics.rpas[0].count)
+        rtf = {key, seconds / value for value in torchutil.time.results()}
+
         # Save
-        results[dataset] = {'speed': torchutil.time.results()} | metrics()
+        results[dataset] = metrics() | {'rtf': rtf}
     with open(torbi.EVAL_DIR / 'results.json', 'w') as file:
         json.dump(results, file)
