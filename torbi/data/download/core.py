@@ -1,7 +1,6 @@
 import shutil
 from pathlib import Path
 
-import torchaudio
 import torchutil
 
 import torbi
@@ -22,6 +21,9 @@ def datasets(datasets):
 
 def daps():
     """Download daps dataset"""
+    import torchaudio
+
+    # Download tarball
     torchutil.download.targz(
         'https://zenodo.org/record/4783456/files/daps-segmented.tar.gz?download=1',
         torbi.DATA_DIR)

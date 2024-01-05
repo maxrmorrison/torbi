@@ -7,13 +7,20 @@
 
 </div>
 
-Current timings
 
-Librosa:
-{'setup': 0.0015919208526611328, 'forward-backward': 4.66046929359436, 'total': 4.6620612144470215}
+## Table of contents
 
-Numpy:
-{'setup': 0.007745981216430664, 'forward': 3.7035388946533203, 'backward': 0.0003383159637451172, 'total': 3.711623191833496}
-
-Cython:
-{'setup': 0.007486581802368164, 'forward': 13.393983125686646, 'backward': 0.0010607242584228516, 'total': 13.402530431747437}
+- [Installation](#installation)
+- [Decoding](#decoding)
+    * [Application programming interface](#application-programming-interface)
+        * [`torbi.from_probabilities`](#torbifrom_probabilities)
+        * [`torbi.from_file`](#torbifrom_file)
+        * [`torbi.from_file_to_file`](#torbifrom_file_to_file)
+        * [`torbi.from_files_to_files`](#torbifrom_files_to_files)
+    * [Command-line interface](#command-line-interface)
+- [Evaluation](#evaluation)
+    * [Download](#download)
+    * [Preprocess](#preprocess)
+    * [Partition](#partition)
+    * [Evaluate](#evaluate)
+- [Citation](#citation)

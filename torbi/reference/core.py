@@ -1,7 +1,6 @@
 import functools
 import math
 
-import librosa
 import numpy as np
 import torch
 import torchutil
@@ -19,6 +18,7 @@ def from_probabilities(
     log_probs=None
 ) -> torch.Tensor:
     """Perform reference Viterbi decoding"""
+    import librosa
     device = observation.device
     frames, states = observation.shape
 

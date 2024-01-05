@@ -8,20 +8,14 @@ CONFIG = 'torbi'
 
 
 ###############################################################################
-# Decoding
-###############################################################################
-
-
-
-
-
-###############################################################################
 # Directories
 ###############################################################################
 
-
 # Root location for saving outputs
 ROOT_DIR = Path(__file__).parent.parent.parent
+
+# Location to save assets to be bundled with pip release
+ASSETS_DIR = Path(__file__).parent.parent / 'assets'
 
 # Location of preprocessed features
 CACHE_DIR = ROOT_DIR / 'data' / 'cache'

@@ -2,9 +2,10 @@ import os
 from pathlib import Path
 from pybind11.setup_helpers import Pybind11Extension
 from setuptools import find_packages, setup
-from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
 import numpy as np
+from torch.utils.cpp_extension import BuildExtension, CUDAExtension
+
 
 os.environ['CXX'] = 'g++-11'
 os.environ['CC'] = 'gcc-11'
@@ -44,8 +45,10 @@ setup(
     cmdclass={'build_ext': BuildExtension},
     include_dirs=[np.get_include(), 'torbi'],
     setup_requires=['numpy', 'torch'],
-    install_requires=['numpy', 'torch', 'torchutil'],
+    install_requires=['numpy', 'torch', 'torchutil', 'yapecs'],
+    extras_require={'evaluate': ['librosa', 'torchaudio']}
     packages=find_packages(),
+    package_data={'torbi': ['assets/*', 'assets/*/*']},
     long_description=long_description,
     long_description_content_type='text/markdown',
     keywords=['decode', 'sequence', 'torch', 'Viterbi'],

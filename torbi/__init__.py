@@ -24,4 +24,5 @@ from .core import *
 from fastops import *
 from . import data
 from . import evaluate
+from . import partition
 from . import reference
