@@ -44,9 +44,9 @@ setup(
     ext_modules=modules,
     cmdclass={'build_ext': BuildExtension},
     include_dirs=[np.get_include(), 'torbi'],
-    setup_requires=['numpy', 'torch'],
+    setup_requires=['numpy', 'torch', 'pybind11'],
     install_requires=['numpy', 'torch', 'torchutil', 'yapecs'],
-    extras_require={'evaluate': ['librosa', 'torchaudio']}
+    extras_require={'evaluate': ['librosa', 'torchaudio']},
     packages=find_packages(),
     package_data={'torbi': ['assets/*', 'assets/*/*']},
     long_description=long_description,

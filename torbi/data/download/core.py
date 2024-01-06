@@ -1,6 +1,7 @@
 import shutil
 from pathlib import Path
 
+import torch
 import torchutil
 
 import torbi
@@ -29,12 +30,12 @@ def daps():
         torbi.DATA_DIR)
 
     # Delete previous directory
-    shutil.rmtree(promonet.DATA_DIR / 'daps', ignore_errors=True)
+    shutil.rmtree(torbi.DATA_DIR / 'daps', ignore_errors=True)
 
     # Rename directory
-    data_directory = promonet.DATA_DIR / 'daps'
+    data_directory = torbi.DATA_DIR / 'daps'
     shutil.move(
-        promonet.DATA_DIR / 'daps-segmented',
+        torbi.DATA_DIR / 'daps-segmented',
         data_directory)
 
     # Get audio files

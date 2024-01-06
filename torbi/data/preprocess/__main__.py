@@ -22,5 +22,5 @@ def parse_args():
         help='The index of the gpu to use')
     return parser.parse_args()
 
-
-torbi.data.preprocess.datasets(**vars(parse_args()))
+if __name__ == '__main__':
+    torbi.data.preprocess.datasets(**vars(parse_args()))
