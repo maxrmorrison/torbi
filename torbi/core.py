@@ -47,7 +47,7 @@ def from_probabilities(
             shape=(frames,)
     """
     frames, states = observation.shape
-    device = 'cpu' if gpu is None else f'cuda:{gpu}
+    device = 'cpu' if gpu is None else f'cuda:{gpu}'
     if device == 'cpu':
 
         # Default to uniform initial probabilities
