@@ -49,9 +49,17 @@ def datasets(datasets, gpu=None):
             'reference' /
             f'{stem}.pt' for stem in stems]
 
+        # Create parent directories
+        (torbi.EVAL_DIR / dataset / 'reference').mkdir(parents=True, exist_ok=True)
+        for file in reference_files:
+            file.parent.mkdir(exist_ok=True)
+
+        # get transition file
+        transition_file = torbi.PITCH_TRANSITION_MATRIX
+
         # Run reference Librosa implementation if we haven't yet
         if not all(file.exists() for file in reference_files):
-            torbi.reference.from_files_to_files(input_files, reference_files)
+            torbi.reference.from_files_to_files(input_files, reference_files, transition_file=transition_file, log_probs=True)
 
         # Get location to save output
         output_files = [
@@ -61,7 +69,7 @@ def datasets(datasets, gpu=None):
             f'{stem}.pt' for stem in stems]
 
         # Run Viterbi decoding
-        torbi.from_files_to_files(input_files, output_files, gpu=gpu)
+        torbi.from_files_to_files(input_files, output_files, transition_file=transition_file, log_probs=True, gpu=gpu)
 
         # Initialize metrics
         metrics = torbi.evaluate.Metrics()

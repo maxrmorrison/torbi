@@ -25,8 +25,8 @@ def from_probabilities(
     # Setup initial probabilities
     if initial is None:
         initial = np.full(
-            (frames,),
-            math.log(1. / states),
+            (states,),
+            1. / states,
             dtype=np.float32)
     else:
         if log_probs:
@@ -36,8 +36,8 @@ def from_probabilities(
     # Setup transition probabilities
     if transition is None:
         transition = np.full(
-            (frames, frames),
-            math.log(1. / states),
+            (states, states),
+            1. / states,
             dtype=np.float32)
     else:
         if log_probs:
@@ -72,7 +72,9 @@ def from_file(
     """Perform reference Viterbi decoding on a file"""
     observation = torch.load(input_file)
     if transition_file:
-        transition = torch.load(transition_file)
+        transition = torch.load(transition_file) # comes as probs, not log probs
+        if log_probs:
+            transition = torch.log(transition)
     else:
         transition = None
     if initial_file:
