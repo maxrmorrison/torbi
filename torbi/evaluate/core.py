@@ -1,8 +1,7 @@
 import json
 
-import torch
-
 import penn
+import torch
 import torchutil
 
 import torbi
@@ -15,8 +14,21 @@ import torbi
 
 def datasets(datasets, gpu=None):
     """Evaluate Viterbi decoding methods"""
-    results = {}
+    # Cache transition matrix
+    if not torbi.PITCH_TRANSITION_MATRIX.exists():
+        xx, yy = torch.meshgrid(
+            torch.arange(penn.PITCH_BINS),
+            torch.arange(penn.PITCH_BINS),
+            indexing='ij')
+        bins_per_octave = penn.OCTAVE / penn.CENTS_PER_BIN
+        max_octaves_per_frame = \
+            penn.MAX_OCTAVES_PER_SECOND * penn.HOPSIZE / penn.SAMPLE_RATE
+        max_bins_per_frame = max_octaves_per_frame * bins_per_octave + 1
+        transition = torch.clip(max_bins_per_frame - (xx - yy).abs(), 0)
+        transition = transition / transition.sum(dim=1, keepdims=True)
+        torch.save(transition, torbi.PITCH_TRANSITION_MATRIX)
 
+    results = {}
     for dataset in datasets:
 
         # Reset benchmarking
@@ -56,13 +68,15 @@ def datasets(datasets, gpu=None):
 
         # Evaluate
         for predicted_file, target_file in zip(output_files, reference_files):
-            predicted = torch.load(predicted)
-            target = torch.load(target)
+            predicted = torch.load(predicted_file)
+            target = torch.load(target_file)
             metrics.update(predicted, target)
 
         # Get speed as real-time-factor (i.e., seconds decoded per second)
         seconds = penn.convert.frames_to_seconds(metrics.rpas[0].count)
-        rtf = {kv[0]: seconds / kv[1] for kv in torchutil.time.results()}
+        rtf = {
+            key: seconds / value
+            for key, value in torchutil.time.results().items()}
 
         # Save
         results[dataset] = metrics() | {'rtf': rtf}

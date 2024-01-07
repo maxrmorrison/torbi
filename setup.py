@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 from pybind11.setup_helpers import Pybind11Extension
 from setuptools import find_packages, setup
 

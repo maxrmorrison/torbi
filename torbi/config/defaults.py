@@ -44,5 +44,8 @@ EVALUATION_SAMPLES = 100
 # Thresholds (in number of 5 cent bins) for raw pitch accuracy evaluation
 PITCH_ERROR_THRESHOLDS = [0, 1, 2]
 
+# File for caching transition matrix for pitch decoding evaluation
+PITCH_TRANSITION_MATRIX = ASSETS_DIR / 'stats' / 'transition.pt'
+
 # Seed for all random number generators
 RANDOM_SEED = 1234
