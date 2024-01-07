@@ -1,5 +1,7 @@
 import json
 
+import torch
+
 import penn
 import torchutil
 
@@ -11,7 +13,7 @@ import torbi
 ###############################################################################
 
 
-def datasets(datasets):
+def datasets(datasets, gpu=None):
     """Evaluate Viterbi decoding methods"""
     results = {}
 
@@ -37,7 +39,7 @@ def datasets(datasets):
 
         # Run reference Librosa implementation if we haven't yet
         if not all(file.exists() for file in reference_files):
-            torbi.reference.from_files_to_files(input_files, output_files)
+            torbi.reference.from_files_to_files(input_files, reference_files)
 
         # Get location to save output
         output_files = [
@@ -47,7 +49,7 @@ def datasets(datasets):
             f'{stem}.pt' for stem in stems]
 
         # Run Viterbi decoding
-        torbi.from_files_to_files(input_files, output_files)
+        torbi.from_files_to_files(input_files, output_files, gpu=gpu)
 
         # Initialize metrics
         metrics = torbi.evaluate.Metrics()
@@ -60,7 +62,7 @@ def datasets(datasets):
 
         # Get speed as real-time-factor (i.e., seconds decoded per second)
         seconds = penn.convert.frames_to_seconds(metrics.rpas[0].count)
-        rtf = {key, seconds / value for value in torchutil.time.results()}
+        rtf = {kv[0]: seconds / kv[1] for kv in torchutil.time.results()}
 
         # Save
         results[dataset] = metrics() | {'rtf': rtf}

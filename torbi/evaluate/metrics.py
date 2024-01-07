@@ -1,6 +1,8 @@
 import torch
 import torchutil
 
+import torbi
+
 
 ###############################################################################
 # Aggregate metric
@@ -19,7 +21,7 @@ class Metrics:
         for rpa in self.rpas:
             rpa.update(predicted, target)
 
-    def reset():
+    def reset(self):
         for rpa in self.rpas:
             rpa.reset()
 
@@ -35,7 +37,7 @@ class RPA(torchutil.metrics.Average):
         super().__init__()
         self.threshold = threshold
 
-    def update(predicted, target):
+    def update(self, predicted, target):
         super().update(
             torch.abs(predicted - target) <= self.threshold,
             predicted.numel())

@@ -15,7 +15,7 @@ def datasets(datasets):
         random.seed(torbi.RANDOM_SEED)
 
         # Get stems
-        directory = promonet.CACHE_DIR / dataset
+        directory = torbi.CACHE_DIR / dataset
         stems = [
             f'{file.parent.name}/{file.stem}'
             for file in directory.rglob('*.wav')]

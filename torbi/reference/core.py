@@ -73,8 +73,12 @@ def from_file(
     observation = torch.load(input_file)
     if transition_file:
         transition = torch.load(transition_file)
+    else:
+        transition = None
     if initial_file:
         initial = torch.load(initial_file)
+    else:
+        initial = None
     return from_probabilities(observation, transition, initial, log_probs)
 
 

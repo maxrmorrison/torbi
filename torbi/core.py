@@ -202,7 +202,7 @@ def from_file(
         transition = torch.load(transition_file)
     if initial_file:
         initial = torch.load(initial_file)
-    return from_probabilities(observation, transition, initial, log_probs)
+    return from_probabilities(observation, transition, initial, log_probs, gpu=gpu)
 
 
 def from_file_to_file(
@@ -232,7 +232,7 @@ def from_file_to_file(
         gpu
             GPU index to use for decoding. Defaults to CPU.
     """
-    indices = from_file(input_file, transition_file, initial_file, log_probs)
+    indices = from_file(input_file, transition_file, initial_file, log_probs, gpu=gpu)
     torch.save(indices, output_file)
 
 
@@ -267,7 +267,8 @@ def from_files_to_files(
         from_file_to_file,
         transition_file=transition_file,
         initial_file=initial_file,
-        log_probs=log_probs)
+        log_probs=log_probs,
+        gpu=gpu)
     for input_file, output_file in zip(input_files, output_files):
         decode_fn(input_file, output_file)
 
