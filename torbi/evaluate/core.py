@@ -68,6 +68,11 @@ def datasets(datasets, gpu=None):
             torbi.CONFIG /
             f'{stem}.pt' for stem in stems]
 
+        # Create parent directories
+        (torbi.EVAL_DIR / dataset / torbi.CONFIG).mkdir(parents=True, exist_ok=True)
+        for file in output_files:
+            file.parent.mkdir(exist_ok=True)
+
         # Run Viterbi decoding
         torbi.from_files_to_files(input_files, output_files, transition_file=transition_file, log_probs=True, gpu=gpu)
 
@@ -76,8 +81,8 @@ def datasets(datasets, gpu=None):
 
         # Evaluate
         for predicted_file, target_file in zip(output_files, reference_files):
-            predicted = torch.load(predicted_file)
-            target = torch.load(target_file)
+            predicted = torch.load(predicted_file, map_location='cpu')
+            target = torch.load(target_file, map_location='cpu')
             metrics.update(predicted, target)
 
         # Get speed as real-time-factor (i.e., seconds decoded per second)
