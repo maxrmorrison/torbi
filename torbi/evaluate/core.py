@@ -93,5 +93,5 @@ def datasets(datasets, gpu=None):
 
         # Save
         results[dataset] = metrics() | {'rtf': rtf}
-    with open(torbi.EVAL_DIR / 'results.json', 'w') as file:
+    with open(torbi.EVAL_DIR / f'{torbi.CONFIG}.json', 'w') as file:
         json.dump(results, file)

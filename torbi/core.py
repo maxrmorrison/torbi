@@ -53,7 +53,7 @@ def from_probabilities(
         # Default to uniform initial probabilities
         if initial is None:
             initial = np.full(
-                (frames,),
+                (states,),
                 math.log(1. / states),
                 dtype=np.float32)
 
@@ -66,7 +66,7 @@ def from_probabilities(
         # Default to uniform transition probabilities
         if transition is None:
             transition = np.full(
-                (frames, frames),
+                (states, states),
                 math.log(1. / states),
                 dtype=np.float32)
 
@@ -107,7 +107,7 @@ def from_probabilities(
         # Default to uniform initial probabilities
         if initial is None:
             initial = torch.full(
-                (frames,),
+                (states,),
                 math.log(1. / states),
                 dtype=torch.float32,
                 device=device)
@@ -121,7 +121,7 @@ def from_probabilities(
         # Default to uniform transition probabilities
         if transition is None:
             transition = torch.full(
-                (frames, frames),
+                (states, states),
                 math.log(1. / states),
                 dtype=torch.float32,
                 device=device)
