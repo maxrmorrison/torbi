@@ -10,7 +10,6 @@ void viterbi_cuda_forward(
     torch::Tensor initial,
     torch::Tensor posterior,
     torch::Tensor memory,
-    torch::Tensor probability,
     int frames,
     int states
 );
@@ -25,7 +24,6 @@ void viterbi_forward(
     torch::Tensor initial,
     torch::Tensor posterior,
     torch::Tensor memory,
-    torch::Tensor probability,
     int frames,
     int states
 ) {
@@ -34,14 +32,12 @@ void viterbi_forward(
     CHECK_INPUT(initial);
     CHECK_INPUT(posterior);
     CHECK_INPUT(memory);
-    CHECK_INPUT(probability);
     return viterbi_cuda_forward(
         observation,
         transition,
         initial,
         posterior,
         memory,
-        probability,
         frames,
         states
     );

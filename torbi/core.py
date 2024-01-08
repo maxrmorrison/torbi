@@ -156,7 +156,6 @@ def from_probabilities(
                 initial,
                 posterior,
                 memory,
-                probability,
                 frames,
                 states)
 
