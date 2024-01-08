@@ -143,10 +143,6 @@ def from_probabilities(
             observation.shape,
             dtype=torch.int32,
             device=device)
-        probability = torch.zeros(
-            (states, states),
-            dtype=torch.float32,
-            device=device)
 
         # Forward pass
         with torchutil.time.context('forward'):

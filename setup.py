@@ -28,7 +28,8 @@ modules = [
         [
             'torbi/ops_cuda.cpp',
             'torbi/ops_cuda_kernel.cu'
-        ]
+        ],
+        # extra_compile_args={'cxx': [], 'nvcc': ['-keep', '-G', '-O3', '--source-in-ptx']}
     )
 ]
 
