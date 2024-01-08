@@ -116,24 +116,28 @@ __global__ void viterbi_forward_kernel(
         // }
 
         // Iterate rows by warp (each warp gets assigned a row)
+        int max_index;
+        float max_value;
         for (int j=warp_id; j<states; j+=NUM_WARPS) {
             
             // Indices start out as just 0-WARP_SIZE for the first WARP_SIZE elements in the array
-            argmax_indices[thread_id] = thread_warp_id;
+            max_index = thread_warp_id;
             // Values start as the first WARP_SIZE elements in the row, with row selected by j
-            argmax_values[thread_id] = probability[j*states+thread_warp_id];
-            __syncwarp();
+            max_value = probability[j*states+thread_warp_id];
 
             // Slide the warp over the row in a linear argmax search (parallelized by threads within the warp)
             // Note that we start here offset by the WARP_SIZE since we already initialized using the first chunk
             for (int i=thread_warp_id+WARP_SIZE; i<states; i+=WARP_SIZE) {
                 // Get the new value from the current row at the current offset
                 float new_value = probability[j*states+i];
-                if (new_value > argmax_values[thread_id]) {
-                    argmax_indices[thread_id] = i;
-                    argmax_values[thread_id] = new_value;
+                if (new_value > max_value) {
+                    max_index = i;
+                    max_value = new_value;
                 }
             }
+
+            argmax_indices[thread_id] = max_index;
+            argmax_values[thread_id] = max_value;
             __syncwarp();
 
             // Perform reduction
@@ -156,7 +160,25 @@ __global__ void viterbi_forward_kernel(
             // __syncwarp();
 
             // This is a first attempt at a parallel reduction
-            for (int index=thread_warp_id*2; index<WARP_SIZE; index*=2) {
+            //I don't think this pragma makes any difference here
+            #pragma unroll
+            for (int offset=WARP_SIZE/2; offset>0; offset/=2) {
+                if (thread_warp_id < offset) {
+                    float value0 = argmax_values[thread_id];
+                    float value1 = argmax_values[thread_id+offset];
+                    int index1 = argmax_indices[thread_id+offset];
+                    if (value0 >= value1) {
+                        argmax_values[thread_id] = value0;
+                    } else {
+                        argmax_values[thread_id] = value1;
+                        argmax_indices[thread_id] = index1;
+                    }
+                }
+                __syncwarp();
+            }
+            if (thread_warp_id == 0) {
+                memory[t*states+j] = argmax_indices[thread_id];
+                posterior[t*states+j] = observation[t*states+j] + argmax_values[thread_id];
             }
         }
         __syncthreads(); 
