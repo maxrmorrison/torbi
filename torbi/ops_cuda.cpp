@@ -10,7 +10,8 @@ void viterbi_cuda_forward(
     torch::Tensor initial,
     torch::Tensor posterior,
     torch::Tensor memory,
-    int frames,
+    torch::Tensor batch_frames,
+    int max_frames,
     int states
 );
 
@@ -24,7 +25,8 @@ void viterbi_forward(
     torch::Tensor initial,
     torch::Tensor posterior,
     torch::Tensor memory,
-    int frames,
+    torch::Tensor batch_frames,
+    int max_frames,
     int states
 ) {
     CHECK_INPUT(observation);
@@ -32,18 +34,19 @@ void viterbi_forward(
     CHECK_INPUT(initial);
     CHECK_INPUT(posterior);
     CHECK_INPUT(memory);
+    CHECK_INPUT(batch_frames);
     return viterbi_cuda_forward(
         observation,
         transition,
         initial,
         posterior,
         memory,
-        frames,
+        batch_frames,
+        max_frames,
         states
     );
 }
 
 PYBIND11_MODULE(cudaops, m) {
   m.def("forward", &viterbi_forward, "CUDA go BRRRRRRRRRRRRRRRR R R  R");
-//   m.def("backward", &lltm_backward, "LLTM backward (CUDA)");
 }

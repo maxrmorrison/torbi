@@ -150,8 +150,9 @@ def from_probabilities(
                 observation,
                 transition,
                 initial,
-                posterior,
+                posterior[-1],
                 memory,
+                torch.tensor([frames], dtype=torch.int32, device=device),
                 frames,
                 states)
 

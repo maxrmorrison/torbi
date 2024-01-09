@@ -13,20 +13,29 @@
 
 #define FULL_MASK 0xffffffff
 
+// Is this a good kernel? Maybe not. Does it work? Yes.
 __global__ void viterbi_forward_kernel(
-    float* __restrict__ observation,
-    float* __restrict__ transition,
-    float* __restrict__ initial,
-    float* __restrict__ posterior,
-    int* __restrict__ memory,
-    int frames,
+    float* __restrict__ observation, // BATCH x FRAMES x STATES
+    float* __restrict__ transition, // STATES x STATES
+    float* __restrict__ initial, // BATCH x STATES
+    float* __restrict__ posterior, // BATCH x STATES
+    int* __restrict__ memory, // BATCH x FRAMES x STATES
+    int* __restrict__ batch_frames, // BATCH
+    int max_frames,
     int states
 ) {
-    // // save to avoid re-computation
-    // // the id of the current thread
-    // int thread_id = threadIdx.x;
-    // the id of the warp to which this thread belongs
+
+    // Handle batch
+    int batch_id = blockIdx.x;
+    int frames = batch_frames[batch_id]; // Get number of frames for this batch item
+    observation += batch_id * max_frames * states;
+    initial += batch_id * states;
+    posterior += batch_id * states;
+    memory += batch_id * max_frames * states;
+
+    // The id of the warp to which this thread belongs
     int warp_id = threadIdx.x / WARP_SIZE;
+    // The id of this thread within its warp
     int thread_warp_id = threadIdx.x % WARP_SIZE;
 
     extern __shared__ float posterior_cache[];
@@ -90,7 +99,7 @@ __global__ void viterbi_forward_kernel(
 
     // Write final posterior row
     for (int i=threadIdx.x; i<states; i+=NUM_THREADS) {
-        posterior[(frames-1)*states+i] = posterior_current[i];
+        posterior[i] = posterior_current[i];
     }
     __syncthreads();
 }
@@ -102,7 +111,8 @@ void viterbi_cuda_forward(
     torch::Tensor initial,
     torch::Tensor posterior,
     torch::Tensor memory,
-    int frames,
+    torch::Tensor batch_frames,
+    int max_frames,
     int states
 ) {
     const int threads = NUM_THREADS;
@@ -120,7 +130,8 @@ void viterbi_cuda_forward(
         initial.data<float>(),
         posterior.data<float>(),
         memory.data<int>(),
-        frames,
+        batch_frames.data<int>(),
+        max_frames,
         states
     );
     cudaEventRecord(stop);
