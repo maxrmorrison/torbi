@@ -53,7 +53,7 @@ def from_probabilities(
         # Default to uniform initial probabilities
         if initial is None:
             initial = np.full(
-                (frames,),
+                (states,),
                 math.log(1. / states),
                 dtype=np.float32)
 
@@ -66,7 +66,7 @@ def from_probabilities(
         # Default to uniform transition probabilities
         if transition is None:
             transition = np.full(
-                (frames, frames),
+                (states, states),
                 math.log(1. / states),
                 dtype=np.float32)
 
@@ -107,7 +107,7 @@ def from_probabilities(
         # Default to uniform initial probabilities
         if initial is None:
             initial = torch.full(
-                (frames,),
+                (states,),
                 math.log(1. / states),
                 dtype=torch.float32,
                 device=device)
@@ -121,7 +121,7 @@ def from_probabilities(
         # Default to uniform transition probabilities
         if transition is None:
             transition = torch.full(
-                (frames, frames),
+                (states, states),
                 math.log(1. / states),
                 dtype=torch.float32,
                 device=device)
@@ -135,17 +135,13 @@ def from_probabilities(
         # Ensure observation probabilities are in log space
         if not log_probs:
             observation = torch.log(observation)
-        observation = observation.to(device)
+        observation = observation.to(device=device, dtype=torch.float32)
 
         # Initialize
         posterior = torch.zeros_like(observation)
         memory = torch.zeros(
             observation.shape,
             dtype=torch.int32,
-            device=device)
-        probability = torch.zeros(
-            (states, states),
-            dtype=torch.float32,
             device=device)
 
         # Forward pass
@@ -154,9 +150,9 @@ def from_probabilities(
                 observation,
                 transition,
                 initial,
-                posterior,
+                posterior[-1],
                 memory,
-                probability,
+                torch.tensor([frames], dtype=torch.int32, device=device),
                 frames,
                 states)
 
@@ -200,8 +196,14 @@ def from_file(
     observation = torch.load(input_file)
     if transition_file:
         transition = torch.load(transition_file)
+        if log_probs:
+            transition = torch.log(transition)
+    else:
+        transition = None
     if initial_file:
         initial = torch.load(initial_file)
+    else:
+        initial = None
     return from_probabilities(observation, transition, initial, log_probs, gpu=gpu)
 
 
