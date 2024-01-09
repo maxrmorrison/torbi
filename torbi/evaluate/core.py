@@ -59,7 +59,11 @@ def datasets(datasets, gpu=None):
 
         # Run reference Librosa implementation if we haven't yet
         if not all(file.exists() for file in reference_files):
-            torbi.reference.from_files_to_files(input_files, reference_files, transition_file=transition_file, log_probs=True)
+            torbi.reference.from_files_to_files(
+                input_files,
+                reference_files,
+                transition_file=transition_file,
+                log_probs=True)
 
         # Get location to save output
         output_files = [
