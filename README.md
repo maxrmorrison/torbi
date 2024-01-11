@@ -232,17 +232,15 @@ pitch estimator.
 
 ### Partition
 
-`python -m penn.partition`
+`python -m torbi.partition`
 
 Randomly selects examples in the dataset for evaluation.
 
 
 ### Evaluate
 
-### Evaluate
-
 ```
-python -m penn.evaluate --config <config> --gpu <gpu>
+python -m torbi.evaluate --config <config> --gpu <gpu>
 ```
 
 Evaluates the accuracy and speed of decoding methods. `<gpu>` is the GPU index.
