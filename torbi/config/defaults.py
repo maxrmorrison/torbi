@@ -49,3 +49,12 @@ PITCH_TRANSITION_MATRIX = ASSETS_DIR / 'stats' / 'transition.pt'
 
 # Seed for all random number generators
 RANDOM_SEED = 1234
+
+
+###############################################################################
+# settings
+###############################################################################
+
+NUM_WORKERS = 0
+
+BATCH_SIZE = 100

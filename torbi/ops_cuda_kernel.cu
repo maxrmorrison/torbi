@@ -115,7 +115,7 @@ void viterbi_cuda_forward(
     int states
 ) {
     const int threads = NUM_THREADS;
-    const dim3 blocks(1);
+    const dim3 blocks(observation.size(0));
 
     // Create CUDA events for timing
     cudaEvent_t start, stop;
