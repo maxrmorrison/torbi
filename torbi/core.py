@@ -148,11 +148,11 @@ def from_probabilities(
         with torchutil.time.context('forward'):
             cuda_forward(
                 observation,
+                torch.tensor([frames], dtype=torch.int32, device=device),
                 transition,
                 initial,
                 posterior[-1],
                 memory,
-                torch.tensor([frames], dtype=torch.int32, device=device),
                 frames,
                 states)
 
