@@ -19,6 +19,7 @@ from cudaops import forward as cuda_forward
 
 def from_probabilities(
     observation: torch.Tensor,
+    batch_frames: Optional[torch.Tensor] = None,
     transition: Optional[torch.Tensor] = None,
     initial: Optional[torch.Tensor] = None,
     log_probs: bool = False,
@@ -46,7 +47,7 @@ def from_probabilities(
             The decoded bin indices
             shape=(frames,)
     """
-    frames, states = observation.shape
+    batch, frames, states = observation.shape
     device = 'cpu' if gpu is None else f'cuda:{gpu}'
     if device == 'cpu':
 
@@ -104,6 +105,15 @@ def from_probabilities(
 
     else:
 
+        if batch_frames is None:
+            batch_frames = torch.full(
+                (batch,),
+                frames,
+                dtype=torch.int32,
+                device=device
+            )
+        batch_frames = batch_frames.to(dtype=torch.int32, device=device)
+
         # Default to uniform initial probabilities
         if initial is None:
             initial = torch.full(
@@ -138,9 +148,12 @@ def from_probabilities(
         observation = observation.to(device=device, dtype=torch.float32)
 
         # Initialize
-        posterior = torch.zeros_like(observation)
+        posterior = torch.zeros(
+            (batch, states,),
+            dtype=torch.float32,
+            device=device)
         memory = torch.zeros(
-            observation.shape,
+            (batch, frames, states),
             dtype=torch.int32,
             device=device)
 
@@ -148,10 +161,10 @@ def from_probabilities(
         with torchutil.time.context('forward'):
             cuda_forward(
                 observation,
-                torch.tensor([frames], dtype=torch.int32, device=device),
+                batch_frames,
                 transition,
                 initial,
-                posterior[-1],
+                posterior,
                 memory,
                 frames,
                 states)
@@ -159,7 +172,7 @@ def from_probabilities(
     with torchutil.time.context('backward'):
 
         # Backward pass
-        indices = backward(posterior, memory)
+        indices = backward(posterior, memory).squeeze(dim=0)
 
     return indices
 
@@ -193,7 +206,7 @@ def from_file(
             The decoded bin indices
             shape=(frames,)
     """
-    observation = torch.load(input_file)
+    observation = torch.load(input_file).unsqueeze(dim=0)
     if transition_file:
         transition = torch.load(transition_file)
         if log_probs:
@@ -204,7 +217,12 @@ def from_file(
         initial = torch.load(initial_file)
     else:
         initial = None
-    return from_probabilities(observation, transition, initial, log_probs, gpu=gpu)
+    return from_probabilities(
+        observation=observation,
+        transition=transition,
+        initial=initial,
+        log_probs=log_probs,
+        gpu=gpu)
 
 
 def from_file_to_file(
@@ -282,17 +300,14 @@ def from_files_to_files(
 
 def backward(posterior, memory, size=None):
     """Get optimal pass from results of forward pass"""
-    if size is None:
-        size = len(posterior)
-
-    # Initialize
-    indices = torch.full(
-        (size,),
-        torch.argmax(posterior[-1]),
-        dtype=torch.int32)
+    batch, frames, states = memory.shape
+    
+    indices = torch.argmax(posterior, dim=1)\
+        .unsqueeze(dim=1)\
+        .repeat(1, frames)
 
     # Backward
-    for t in range(size - 2, -1, -1):
-        indices[t] = memory[t + 1, indices[t + 1]]
+    for t in range(frames - 2, -1, -1):
+        indices[:, t] = memory[:, t + 1, indices[:, t + 1]]
 
     return indices
