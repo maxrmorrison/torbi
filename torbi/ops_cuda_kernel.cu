@@ -18,7 +18,7 @@ __global__ void viterbi_forward_kernel(
     float* __restrict__ observation, // BATCH x FRAMES x STATES
     int* __restrict__ batch_frames, // BATCH
     float* __restrict__ transition, // STATES x STATES
-    float* __restrict__ initial, // BATCH x STATES
+    float* __restrict__ initial, // STATES
     float* __restrict__ posterior, // BATCH x STATES
     int* __restrict__ memory, // BATCH x FRAMES x STATES
     int max_frames,
