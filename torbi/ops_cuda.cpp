@@ -6,11 +6,11 @@
 
 void viterbi_cuda_forward(
     torch::Tensor observation,
+    torch::Tensor batch_frames,
     torch::Tensor transition,
     torch::Tensor initial,
     torch::Tensor posterior,
     torch::Tensor memory,
-    torch::Tensor batch_frames,
     int max_frames,
     int states
 );
@@ -21,27 +21,27 @@ void viterbi_cuda_forward(
 
 void viterbi_forward(
     torch::Tensor observation,
+    torch::Tensor batch_frames,
     torch::Tensor transition,
     torch::Tensor initial,
     torch::Tensor posterior,
     torch::Tensor memory,
-    torch::Tensor batch_frames,
     int max_frames,
     int states
 ) {
     CHECK_INPUT(observation);
+    CHECK_INPUT(batch_frames);
     CHECK_INPUT(transition);
     CHECK_INPUT(initial);
     CHECK_INPUT(posterior);
     CHECK_INPUT(memory);
-    CHECK_INPUT(batch_frames);
     return viterbi_cuda_forward(
         observation,
+        batch_frames,
         transition,
         initial,
         posterior,
         memory,
-        batch_frames,
         max_frames,
         states
     );

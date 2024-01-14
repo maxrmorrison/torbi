@@ -16,11 +16,11 @@
 // Is this a good kernel? Maybe not. Does it work? Yes.
 __global__ void viterbi_forward_kernel(
     float* __restrict__ observation, // BATCH x FRAMES x STATES
+    int* __restrict__ batch_frames, // BATCH
     float* __restrict__ transition, // STATES x STATES
-    float* __restrict__ initial, // BATCH x STATES
+    float* __restrict__ initial, // STATES
     float* __restrict__ posterior, // BATCH x STATES
     int* __restrict__ memory, // BATCH x FRAMES x STATES
-    int* __restrict__ batch_frames, // BATCH
     int max_frames,
     int states
 ) {
@@ -29,7 +29,6 @@ __global__ void viterbi_forward_kernel(
     int batch_id = blockIdx.x;
     int frames = batch_frames[batch_id]; // Get number of frames for this batch item
     observation += batch_id * max_frames * states;
-    initial += batch_id * states;
     posterior += batch_id * states;
     memory += batch_id * max_frames * states;
 
@@ -107,16 +106,16 @@ __global__ void viterbi_forward_kernel(
 
 void viterbi_cuda_forward(
     torch::Tensor observation,
+    torch::Tensor batch_frames,
     torch::Tensor transition,
     torch::Tensor initial,
     torch::Tensor posterior,
     torch::Tensor memory,
-    torch::Tensor batch_frames,
     int max_frames,
     int states
 ) {
     const int threads = NUM_THREADS;
-    const dim3 blocks(1);
+    const dim3 blocks(observation.size(0));
 
     // Create CUDA events for timing
     cudaEvent_t start, stop;
@@ -126,11 +125,11 @@ void viterbi_cuda_forward(
     cudaEventRecord(start);
     viterbi_forward_kernel<<<blocks, threads, 2*states*sizeof(float)>>>(
         observation.data<float>(),
+        batch_frames.data<int>(),
         transition.data<float>(),
         initial.data<float>(),
         posterior.data<float>(),
         memory.data<int>(),
-        batch_frames.data<int>(),
         max_frames,
         states
     );
