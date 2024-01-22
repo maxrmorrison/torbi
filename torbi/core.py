@@ -72,7 +72,8 @@ def from_dataloader(
             total=len(dataloader.dataset))
 
         # Iterate over dataset
-        for observation, batch_frames, input_filenames in dataloader:
+        for observation, batch_frames, batch_chunks, input_filenames in dataloader:
+        # for observation, batch_frames, input_filenames in dataloader:
 
             indices = from_probabilities(
                 observation=observation,
@@ -86,30 +87,44 @@ def from_dataloader(
             # Get output filenames
             filenames = [output_files[file] for file in input_filenames]
 
-            # Save to disk
-            if save_workers > 0:
-                raise NotImplementedError('not implemented')
-                # # Asynchronous save
-                # pool.starmap_async(
-                #     save_masked,
-                #     zip(result.cpu(), filenames, frame_lengths.cpu()))
-                # while pool._taskqueue.qsize() > 100:
-                #     time.sleep(1)
 
+            if torbi.USE_CHUNKING:
+                indices = torbi.data.separate(
+                    indices=indices,
+                    batch_chunks=batch_chunks,
+                    batch_frames=batch_frames
+                )
+                if save_workers > 0:
+                    raise NotImplementedError('set save_workers = 0')
+                else:
+                    for indices, filename in zip(indices, filenames):
+                        # breakpoint()
+                        save(indices.cpu().detach(), filename)
             else:
+                # Save to disk
+                if save_workers > 0:
+                    raise NotImplementedError('set save_workers = 0')
+                    # # Asynchronous save
+                    # pool.starmap_async(
+                    #     save_masked,
+                    #     zip(result.cpu(), filenames, frame_lengths.cpu()))
+                    # while pool._taskqueue.qsize() > 100:
+                    #     time.sleep(1)
 
-                # Synchronous save
-                for indices, filename, frames in zip(
-                    indices.cpu().detach(),
-                    filenames,
-                    batch_frames.cpu()
-                ):
-                    save_masked(
-                        indices,
-                        filename,
-                        frames)
+                else:
 
-            # Increment by batch size
+                    # Synchronous save
+                    for indices, filename, frames in zip(
+                        indices.cpu().detach(),
+                        filenames,
+                        batch_frames.cpu()
+                    ):
+                        save_masked(
+                            indices,
+                            filename,
+                            frames)
+
+                # Increment by batch size
             progress.update(len(input_filenames))
 
     finally:
@@ -267,7 +282,7 @@ def from_probabilities(
 
         # Forward pass
         with torchutil.time.context('forward'):
-            cuda_forward(
+            indices = cuda_forward(
                 observation,
                 batch_frames,
                 transition,
@@ -277,10 +292,10 @@ def from_probabilities(
                 frames,
                 states)
 
-    with torchutil.time.context('backward'):
+    # with torchutil.time.context('backward'):
 
         # Backward pass
-        indices = backward(posterior, memory, batch_frames=batch_frames)
+        # indices = backward(posterior, memory, batch_frames=batch_frames)
 
     return indices
 
@@ -431,16 +446,21 @@ def backward(posterior, memory, batch_frames):
     """Get optimal pass from results of forward pass"""
     batch, frames, states = memory.shape
     
+    breakpoint()
     indices = torch.argmax(posterior, dim=1)\
         .unsqueeze(dim=1)\
         .repeat(1, frames)
 
     # Backward
     for b in range(batch):
-        for t in range(batch_frames[b] - 2, -1, -1):
-            indices[b, t] = memory[b, t + 1, indices[b, t + 1]]
+        for t in range(batch_frames[b]-1, -1, -1):
+            indices[b, t-1] = memory[b, t, indices[b, t]]
 
     return indices
+
+def save(tensor, file):
+    """Save tensor"""
+    torch.save(tensor.clone(), file)
 
 def save_masked(tensor, file, length):
     """Save masked tensor"""

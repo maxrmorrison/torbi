@@ -20,8 +20,13 @@ class Dataset(torch.utils.data.Dataset):
         input_file = self.input_files[index]
 
         observation = torch.load(input_file)
-        frames = observation.shape[0]
-        return (observation, frames, input_file)
+
+        if torbi.USE_CHUNKING:
+            observation = torbi.chunk(observation)
+        return (observation, input_file)
+
+        # frames = observation.shape[0]
+        # return (observation, frames, input_file)
 
     def __len__(self):
         """Length of the dataset"""

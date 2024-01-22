@@ -30,6 +30,7 @@ modules = [
             'torbi/ops_cuda_kernel.cu'
         ],
         # extra_compile_args={'cxx': [], 'nvcc': ['-keep', '-G', '-O3', '--source-in-ptx']}
+        extra_compile_args={'cxx': ['-fopenmp', '-O3'], 'nvcc': ['-O3']}
     )
 ]
 

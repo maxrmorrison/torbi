@@ -22,6 +22,7 @@ from .config.static import *
 
 from .core import *
 from fastops import *
+from .chunk import chunk
 from . import data
 from . import evaluate
 from . import partition
