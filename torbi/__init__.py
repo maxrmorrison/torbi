@@ -12,6 +12,8 @@ yapecs.configure('torbi', defaults)
 
 # Import configuration parameters
 from .config.defaults import *
+import torbi
+del torbi.defaults # remove unnecessary module
 from .config.static import *
 
 

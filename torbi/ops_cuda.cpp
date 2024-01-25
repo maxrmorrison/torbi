@@ -32,7 +32,8 @@ void viterbi_backward(
         int *indices_b = indices + max_frames * b;
         int *memory_b = memory + max_frames * states * b;
         int frames = batch_frames[b];
-        for (int t=frames-1; t>=0; t--) {
+        // for t in range(batch_frames[b] - 2, -1, -1):
+        for (int t=frames-1; t>=1; t--) {
             indices_b[t-1] = memory_b[t*states+indices_b[t]];
         }
     }

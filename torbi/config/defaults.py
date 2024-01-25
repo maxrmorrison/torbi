@@ -27,7 +27,7 @@ CACHE_DIR = ROOT_DIR / 'data' / 'cache'
 DATA_DIR = ROOT_DIR / 'data' / 'datasets'
 
 # Location to save evaluation artifacts
-EVAL_DIR = ROOT_DIR / 'eval-test'
+EVAL_DIR = ROOT_DIR / 'eval'
 
 
 ###############################################################################
@@ -63,4 +63,13 @@ BATCH_SIZE = 100
 
 USE_CHUNKING = False
 
-ENTROPY_THRESHOLD = 1-0.1625
+MIN_CHUNK_SIZE = 256
+
+# ENTROPY_THRESHOLD = 1-0.1625
+ENTROPY_THRESHOLD = 0.5
+
+# Otherwise compare against self with no chunking
+COMPARE_WITH_REFERENCE = True
+
+# Allows config files to detect if this module is being configured
+CONFIGURING = None

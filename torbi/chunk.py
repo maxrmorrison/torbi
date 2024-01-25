@@ -1,7 +1,7 @@
 import torch
 import torbi
 
-def chunk(sequence, min_chunk_size=64, entropy_threshold=torbi.ENTROPY_THRESHOLD):
+def chunk(sequence, min_chunk_size=torbi.MIN_CHUNK_SIZE, entropy_threshold=torbi.ENTROPY_THRESHOLD):
     """Chunk sequence based on points of low entropy
 
     Arguments
@@ -34,7 +34,7 @@ def chunk(sequence, min_chunk_size=64, entropy_threshold=torbi.ENTROPY_THRESHOLD
 
     return chunks
 
-def split(sequence, min_chunk_size=256, entropy_threshold=torbi.ENTROPY_THRESHOLD):
+def split(sequence, min_chunk_size=torbi.MIN_CHUNK_SIZE, entropy_threshold=torbi.ENTROPY_THRESHOLD):
     """Find split points of minimum entropy"""
     sequence = sequence.T
     length = sequence.shape[-1]

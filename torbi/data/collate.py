@@ -23,7 +23,7 @@ def collate(batch):
         raise ValueError('batch must contain at least 1 item')
 
     max_frames = max(observation.shape[0] for observation in observations)
-    print(max_frames - batch_frames.median(), max_frames)
+    # print(max_frames - batch_frames.median(), max_frames)
 
     observation = torch.zeros((batch, max_frames, observations[0].shape[-1]), dtype=observations[0].dtype)
 
