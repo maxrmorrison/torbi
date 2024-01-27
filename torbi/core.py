@@ -1,4 +1,3 @@
-import functools
 import math
 import os
 from typing import List, Optional, Union, Dict
@@ -10,10 +9,7 @@ import torch
 import torchutil
 
 import torbi
-
-#TODO fix this name
-from fastops import cppforward
-from cudaops import forward as cuda_forward
+from viterbi import forward
 
 
 ###############################################################################
@@ -98,7 +94,6 @@ def from_dataloader(
                     raise NotImplementedError('set save_workers = 0')
                 else:
                     for indices, filename in zip(indices, filenames):
-                        # breakpoint()
                         save(indices.cpu().detach(), filename)
             else:
                 # Save to disk
@@ -172,130 +167,59 @@ def from_probabilities(
     """
     batch, frames, states = observation.shape
     device = 'cpu' if gpu is None else f'cuda:{gpu}'
-    if device == 'cpu':
 
-        # Default to uniform initial probabilities
-        if initial is None:
-            initial = np.full(
-                (states,),
-                math.log(1. / states),
-                dtype=np.float32)
+    if batch_frames is None:
+        batch_frames = torch.full(
+            (batch,),
+            frames,
+            dtype=torch.int32,
+            device=device
+        )
+    batch_frames = batch_frames.to(dtype=torch.int32, device=device)
 
-        # Ensure initial probabilities are in log space
-        else:
-            if not log_probs:
-                initial = torch.log(initial)
-            initial = initial.cpu().numpy().astype(np.float32)
-
-        # Default to uniform transition probabilities
-        if transition is None:
-            transition = np.full(
-                (states, states),
-                math.log(1. / states),
-                dtype=np.float32)
-
-        # Ensure transition probabilities are in log space
-        else:
-            if not log_probs:
-                transition = torch.log(transition)
-            transition = transition.cpu().numpy().astype(np.float32)
-
-        # Ensure observation probabilities are in log space
-        if not log_probs:
-            observation = torch.log(observation)
-        observation = observation.cpu().numpy().astype(np.float32)
-
-        # Initialize
-        posterior = np.zeros_like(observation)
-        memory = np.zeros(observation.shape, dtype=np.int32)
-        probability = np.zeros((states, states), dtype=np.float32)
-
-        # Forward pass
-        with torchutil.time.context('forward'):
-            cppforward(
-                observation,
-                transition,
-                initial,
-                posterior,
-                memory,
-                probability,
-                frames,
-                states)
-
-        # Cast to torch
-        posterior = torch.from_numpy(posterior)
-        memory = torch.from_numpy(memory)
-
-    else:
-
-        if batch_frames is None:
-            batch_frames = torch.full(
-                (batch,),
-                frames,
-                dtype=torch.int32,
-                device=device
-            )
-        batch_frames = batch_frames.to(dtype=torch.int32, device=device)
-
-        # Default to uniform initial probabilities
-        if initial is None:
-            initial = torch.full(
-                (states,),
-                math.log(1. / states),
-                dtype=torch.float32,
-                device=device)
-
-        # Ensure initial probabilities are in log space
-        else:
-            if not log_probs:
-                initial = torch.log(initial)
-            initial = initial.to(device)
-
-        # Default to uniform transition probabilities
-        if transition is None:
-            transition = torch.full(
-                (states, states),
-                math.log(1. / states),
-                dtype=torch.float32,
-                device=device)
-
-        # Ensure transition probabilities are in log space
-        else:
-            if not log_probs:
-                transition = torch.log(transition)
-            transition = transition.to(device)
-
-        # Ensure observation probabilities are in log space
-        if not log_probs:
-            observation = torch.log(observation)
-        observation = observation.to(device=device, dtype=torch.float32)
-
-        # Initialize
-        posterior = torch.zeros(
-            (batch, states,),
+    # Default to uniform initial probabilities
+    if initial is None:
+        initial = torch.full(
+            (states,),
+            math.log((1. / states) + torch.finfo(torch.float32).tiny),
             dtype=torch.float32,
             device=device)
-        memory = torch.zeros(
-            (batch, frames, states),
-            dtype=torch.int32,
+
+    # Ensure initial probabilities are in log space
+    else:
+        if not log_probs:
+            initial = torch.log(initial)
+        initial = initial.to(device)
+
+    # Default to uniform transition probabilities
+    if transition is None:
+        transition = torch.full(
+            (states, states),
+            math.log(1. / states),
+            dtype=torch.float32,
             device=device)
 
-        # Forward pass
-        with torchutil.time.context('forward'):
-            indices = cuda_forward(
-                observation,
-                batch_frames,
-                transition,
-                initial,
-                posterior,
-                memory,
-                frames,
-                states)
+    # Ensure transition probabilities are in log space
+    else:
+        if not log_probs:
+            transition = torch.log(transition)
+        transition = transition.to(device)
 
-    # with torchutil.time.context('backward'):
+    # Ensure observation probabilities are in log space
+    if not log_probs:
+        observation = torch.log(observation)
+    observation = observation.to(device=device, dtype=torch.float32)
 
-        # Backward pass
-        # indices = backward(posterior, memory, batch_frames=batch_frames)
+    # Forward pass
+    #TODO make this operation in place
+    observation = torch.log(torch.exp(observation) + torch.finfo(torch.float32).tiny)
+    with torchutil.time.context('forward'):
+        indices = forward(
+            observation,
+            batch_frames,
+            transition,
+            initial
+        )
 
     return indices
 
@@ -406,18 +330,10 @@ def from_files_to_files(
         gpu
             GPU index to use for decoding. Defaults to CPU.
     """
-    # decode_fn = functools.partial(
-    #     from_file_to_file,
-    #     transition_file=transition_file,
-    #     initial_file=initial_file,
-    #     log_probs=log_probs,
-    #     gpu=gpu)
-    # for input_file, output_file in zip(input_files, output_files):
-    #     decode_fn(input_file, output_file)
     if transition_file:
         transition = torch.load(transition_file)
         if log_probs:
-            transition = torch.log(transition)
+            transition = torch.log(transition+torch.finfo(transition.dtype).tiny)
     else:
         transition = None
     if initial_file:
@@ -440,23 +356,6 @@ def from_files_to_files(
 ###############################################################################
 # Utilities
 ###############################################################################
-
-
-def backward(posterior, memory, batch_frames):
-    """Get optimal pass from results of forward pass"""
-    batch, frames, states = memory.shape
-    
-    breakpoint()
-    indices = torch.argmax(posterior, dim=1)\
-        .unsqueeze(dim=1)\
-        .repeat(1, frames)
-
-    # Backward
-    for b in range(batch):
-        for t in range(batch_frames[b]-1, -1, -1):
-            indices[b, t-1] = memory[b, t, indices[b, t]]
-
-    return indices
 
 def save(tensor, file):
     """Save tensor"""

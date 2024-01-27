@@ -45,6 +45,7 @@ def from_probabilities(
         transition = transition.cpu().numpy().astype(np.float32)
 
     # Setup observation probabilities
+    observation = observation.to(torch.float32).cpu()
     if log_probs:
         observation = torch.exp(observation)
     observation = observation.cpu().numpy().astype(np.float32)
