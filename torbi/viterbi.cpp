@@ -184,6 +184,8 @@ torch::Tensor viterbi_forward(
         states
     );
 
+    indices = indices.to(device);
+
     return indices;
 }
 
