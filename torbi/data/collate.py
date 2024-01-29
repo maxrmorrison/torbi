@@ -34,6 +34,11 @@ def collate(batch):
     return (observation, batch_frames, batch_chunks, input_files)
     # return (observation, batch_frames, input_files)
 
+def collate_reference(batch):
+    observations, input_files = zip(*batch)
+
+    return (observations, input_files)
+
 def separate(indices, batch_chunks, batch_frames):
     start = 0
     separated = []
