@@ -44,7 +44,6 @@ __global__ void viterbi_forward_kernel(
 
     // Set initial
     for (int i=threadIdx.x; i<states; i+=NUM_THREADS) {
-        // posterior[i] = observation[i] + initial[i];
         posterior_current[i] = observation[i] + initial[i];
     }
     __syncthreads();
@@ -60,7 +59,6 @@ __global__ void viterbi_forward_kernel(
             // Indices start out as just 0-WARP_SIZE for the first WARP_SIZE elements in the array
             max_index = thread_warp_id;
             // Values start as the first WARP_SIZE elements in the row, with row selected by j
-            // max_value = posterior[(t-1)*states+thread_warp_id] + transition[j*states+thread_warp_id];
             max_value = posterior_current[thread_warp_id] + transition[j*states+thread_warp_id];
 
             // Slide the warp over the row in a linear argmax search (parallelized by threads within the warp)
