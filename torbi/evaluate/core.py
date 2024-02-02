@@ -42,28 +42,32 @@ def datasets(datasets, gpu=None):
         input_files = [
             torbi.CACHE_DIR / dataset / f'{stem}.pt' for stem in stems]
 
-        # Get location of reference outputs
-        reference_files = [
-            torbi.EVAL_DIR /
-            dataset /
-            'reference' /
-            f'{stem}.pt' for stem in stems]
-
-        # Create parent directories
-        (torbi.EVAL_DIR / dataset / 'reference').mkdir(parents=True, exist_ok=True)
-        for file in reference_files:
-            file.parent.mkdir(exist_ok=True)
-
         # get transition file
         transition_file = torbi.PITCH_TRANSITION_MATRIX
 
-        # Run reference Librosa implementation if we haven't yet
-        if not all(file.exists() for file in reference_files):
-            torbi.reference.from_files_to_files(
-                input_files,
-                reference_files,
-                transition_file=transition_file,
-                log_probs=True)
+        # Get location of reference outputs
+        if torbi.COMPARE_WITH_REFERENCE:
+            reference_files = [
+                torbi.EVAL_DIR /
+                dataset /
+                'reference' /
+                f'{stem}.pt' for stem in stems]
+            
+            # Create parent directories
+            (torbi.EVAL_DIR / dataset / 'reference').mkdir(parents=True, exist_ok=True)
+            for file in reference_files:
+                file.parent.mkdir(exist_ok=True)
+
+            # Run reference Librosa implementation if we haven't yet
+            if not all(file.exists() for file in reference_files):
+                torbi.reference.from_files_to_files(input_files, reference_files, transition_file=transition_file, log_probs=True)
+
+        else: # Compare with non-chunked
+            reference_files = [
+                torbi.EVAL_DIR /
+                dataset /
+                'torbi' /
+                f'{stem}.pt' for stem in stems]
 
         # Get location to save output
         output_files = [

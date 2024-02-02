@@ -44,7 +44,6 @@ __global__ void viterbi_forward_kernel(
 
     // Set initial
     for (int i=threadIdx.x; i<states; i+=NUM_THREADS) {
-        // posterior[i] = observation[i] + initial[i];
         posterior_current[i] = observation[i] + initial[i];
     }
     __syncthreads();
@@ -56,11 +55,10 @@ __global__ void viterbi_forward_kernel(
         float max_value;
         for (int j=warp_id; j<states; j+=NUM_WARPS) {
             // __syncthreads();
-            
+
             // Indices start out as just 0-WARP_SIZE for the first WARP_SIZE elements in the array
             max_index = thread_warp_id;
             // Values start as the first WARP_SIZE elements in the row, with row selected by j
-            // max_value = posterior[(t-1)*states+thread_warp_id] + transition[j*states+thread_warp_id];
             max_value = posterior_current[thread_warp_id] + transition[j*states+thread_warp_id];
 
             // Slide the warp over the row in a linear argmax search (parallelized by threads within the warp)
@@ -85,7 +83,7 @@ __global__ void viterbi_forward_kernel(
                 }
             }
             if (thread_warp_id == 0) {
-                memory[t*states+j] = max_index;
+                memory[(t)*states+j] = max_index;
                 // posterior[t*states+j] = observation[t*states+j] + max_value;
                 posterior_next[j] = observation[t*states+j] + max_value;
             }
@@ -103,8 +101,7 @@ __global__ void viterbi_forward_kernel(
     __syncthreads();
 }
 
-
-void viterbi_cuda_forward(
+void viterbi_forward_cuda(
     torch::Tensor observation,
     torch::Tensor batch_frames,
     torch::Tensor transition,
@@ -115,14 +112,14 @@ void viterbi_cuda_forward(
     int states
 ) {
     const int threads = NUM_THREADS;
-    const dim3 blocks(observation.size(0));
 
-    // Create CUDA events for timing
-    cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
+    int batch_size = observation.size(0);
 
-    cudaEventRecord(start);
+    const dim3 blocks(batch_size);
+
+    int device_num = observation.device().index();
+    cudaSetDevice(device_num);
+
     viterbi_forward_kernel<<<blocks, threads, 2*states*sizeof(float)>>>(
         observation.data<float>(),
         batch_frames.data<int>(),
@@ -133,11 +130,4 @@ void viterbi_cuda_forward(
         max_frames,
         states
     );
-    cudaEventRecord(stop);
-    cudaEventSynchronize(stop);
-    // Calculate the elapsed time
-    float milliseconds = 0;
-    cudaEventElapsedTime(&milliseconds, start, stop);
-
-    std::cout << "CUDA kernel elapsed time: " << milliseconds << " ms" << std::endl;
 }

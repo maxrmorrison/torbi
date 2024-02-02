@@ -36,16 +36,18 @@ EVAL_DIR = ROOT_DIR / 'eval'
 
 
 # Names of all datasets
-DATASETS = ['daps']
+DATASETS = ['daps', 'vctk']
 
 # Number of randomly-selected samples to evaluate
-EVALUATION_SAMPLES = 100
+EVALUATION_SAMPLES = None
 
 # Thresholds (in number of 5 cent bins) for raw pitch accuracy evaluation
 PITCH_ERROR_THRESHOLDS = [0, 1, 2]
 
 # File for caching transition matrix for pitch decoding evaluation
 PITCH_TRANSITION_MATRIX = ASSETS_DIR / 'stats' / 'transition.pt'
+
+SAMPLE_RATE = 16000
 
 # Seed for all random number generators
 RANDOM_SEED = 1234
@@ -57,4 +59,17 @@ RANDOM_SEED = 1234
 
 NUM_WORKERS = 0
 
-BATCH_SIZE = 100
+BATCH_SIZE = 512
+
+USE_CHUNKING = False
+
+MIN_CHUNK_SIZE = 256
+
+# ENTROPY_THRESHOLD = 1-0.1625
+ENTROPY_THRESHOLD = 0.5
+
+# Otherwise compare against self with no chunking
+COMPARE_WITH_REFERENCE = True
+
+# Allows config files to detect if this module is being configured
+CONFIGURING = None

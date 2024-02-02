@@ -12,6 +12,8 @@ yapecs.configure('torbi', defaults)
 
 # Import configuration parameters
 from .config.defaults import *
+import torbi
+del torbi.defaults # remove unnecessary module
 from .config.static import *
 
 
@@ -21,7 +23,7 @@ from .config.static import *
 
 
 from .core import *
-from fastops import *
+from .chunk import chunk
 from . import data
 from . import evaluate
 from . import partition

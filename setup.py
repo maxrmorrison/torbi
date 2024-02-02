@@ -1,7 +1,5 @@
 import os
-from pybind11.setup_helpers import Pybind11Extension
 from setuptools import find_packages, setup
-
 import numpy as np
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
@@ -15,21 +13,14 @@ with open('README.md', encoding='utf-8') as file:
 
 
 modules = [
-    Pybind11Extension(
-        'fastops',
-        ['torbi/ops.cpp'],
-        extra_compile_args=[
-            '-Ofast',
-            '-fopenmp'
-        ],
-    ),
     CUDAExtension(
-        'cudaops',
+        'viterbi',
         [
-            'torbi/ops_cuda.cpp',
-            'torbi/ops_cuda_kernel.cu'
+            'torbi/viterbi.cpp',
+            'torbi/viterbi_kernel.cu'
         ],
         # extra_compile_args={'cxx': [], 'nvcc': ['-keep', '-G', '-O3', '--source-in-ptx']}
+        extra_compile_args={'cxx': ['-fopenmp', '-O3'], 'nvcc': ['-O3']}
     )
 ]
 

@@ -28,10 +28,18 @@
 
 ## Installation
 
+Dependencies:
+- [Intel OpenMP](https://www.intel.com/content/www/us/en/docs/dpcpp-cpp-compiler/developer-guide-reference/2023-1/use-the-openmp-libraries.html)
+- [CUDA toolkit](https://developer.nvidia.com/cuda-toolkit)
+- g++ 11
+
+To install just the core of torbi:
+
 `pip install torbi`
 
 To perform evaluation of the accuracy and speed of decoding methods,
-install the evaluation dependencies
+install the evaluation dependencies:
+
 `pip install torbi[evaluate]`
 
 
@@ -48,7 +56,7 @@ observation = torch.tensor([
     [0.25, 0.5, 0.25],
     [0.25, 0.25, 0.5],
     [0.33, 0.33, 0.33]
-])
+]).unsqueeze(dim=0)
 
 # Transition probabilities bewteen categories
 transition = torch.tensor([
@@ -61,10 +69,10 @@ transition = torch.tensor([
 initial = torch.tensor([0.4, 0.35, 0.25])
 
 # Find optimal path using CPU compute
-torbi.decode(observation, transition, initial, log_probs=False)
+torbi.from_probabilities(observation, transition, initial, log_probs=False)
 
 # Find optimal path using GPU compute
-torbi.decode(observation, transition, initial, log_probs=False, gpu=0)
+torbi.from_probabilities(observation, transition, initial, log_probs=False, gpu=0)
 ```
 
 
@@ -73,6 +81,7 @@ torbi.decode(observation, transition, initial, log_probs=False, gpu=0)
 ```python
 def from_probabilities(
     observation: torch.Tensor,
+    batch_frames: Optional[torch.Tensor] = None,
     transition: Optional[torch.Tensor] = None,
     initial: Optional[torch.Tensor] = None,
     log_probs: bool = False,
@@ -83,7 +92,10 @@ def from_probabilities(
     Arguments
         observation
             Time-varying categorical distribution
-            shape=(frames, states)
+            shape=(batch, frames, states)
+        batch_frames
+            Number of frames in each batch item; defaults to all
+            shape=(batch,)
         transition
             Categorical transition matrix; defaults to uniform
             shape=(states, states)
@@ -98,7 +110,8 @@ def from_probabilities(
     Returns
         indices
             The decoded bin indices
-
+            shape=(batch, frames)
+    """
 ```
 
 
@@ -205,8 +218,30 @@ def from_files_to_files(
 
 ### Command-line interface
 
-```python
-# TODO - usage
+```
+usage: python -m torbi 
+    [-h] 
+    --input_files INPUT_FILES [INPUT_FILES ...] 
+    --output_files OUTPUT_FILES [OUTPUT_FILES ...] 
+    [--transition_file TRANSITION_FILE] 
+    [--initial_file INITIAL_FILE] 
+    [--log_probs] 
+    [--gpu GPU]
+
+arguments:
+  --input_files INPUT_FILES [INPUT_FILES ...]
+                        Time-varying categorical distribution files
+  --output_files OUTPUT_FILES [OUTPUT_FILES ...]
+                        Files to save decoded indices
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --transition_file TRANSITION_FILE
+                        Categorical transition matrix file; defaults to uniform
+  --initial_file INITIAL_FILE
+                        Categorical initial distribution file; defaults to uniform
+  --log_probs           Whether inputs are in (natural) log space
+  --gpu GPU             GPU index to use for decoding. Defaults to CPU.
 ```
 
 **TODO - docstring**
@@ -218,12 +253,12 @@ def from_files_to_files(
 
 `python -m torbi.data.download`
 
-Downloads and uncompresses the `daps` dataset used for evaluation.
+Downloads and decompresses the `daps` and `vctk` datasets used for evaluation.
 
 
 ### Preprocess
 
-`python -m torbi.data.preprocess`
+`python -m torbi.data.preprocess --gpu 0`
 
 Preprocess the dataset to prepare time-varying categorical distributions for
 evaluation. The distributions are pitch posteriorgrams produced by the `penn`
@@ -234,7 +269,7 @@ pitch estimator.
 
 `python -m torbi.partition`
 
-Randomly selects examples in the dataset for evaluation.
+Select all examples in dataset for evaluation.
 
 
 ### Evaluate
