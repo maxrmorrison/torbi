@@ -126,7 +126,7 @@ def from_probabilities(
     observation,
     transition=None,
     initial=None,
-    log_probs=None
+    log_probs=False
 ) -> torch.Tensor:
     """Perform reference Viterbi decoding"""
     import librosa
