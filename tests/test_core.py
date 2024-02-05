@@ -17,5 +17,9 @@ def test_decode():
         [0.25, 0.25, 0.5]
     ])
     initial = torch.tensor([0.4, 0.35, 0.25])
-    bins = torbi.from_probabilities(observation, transition, initial, log_probs=False)
+    bins = torbi.from_probabilities(
+        observation[None],
+        transition,
+        initial,
+        log_probs=False)
     assert (bins == torch.tensor([1, 2, 2])).all()

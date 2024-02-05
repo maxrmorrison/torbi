@@ -18,8 +18,8 @@ def datasets(datasets, gpu=None):
         # Get cache directory
         directory = torbi.CACHE_DIR / dataset
 
+        # Get files
         audio_files = sorted(list(directory.rglob('*.wav')))
-        # audio_files = [file for file in audio_files if '-' in file.stem]
 
         # Preprocess pitch posteriorgrams
         for audio_file in audio_files:

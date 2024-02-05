@@ -14,6 +14,7 @@ CONFIG = 'torbi'
 # Directories
 ###############################################################################
 
+
 # Root location for saving outputs
 ROOT_DIR = Path(__file__).parent.parent.parent
 
@@ -31,9 +32,25 @@ EVAL_DIR = ROOT_DIR / 'eval'
 
 
 ###############################################################################
+# Decoding
+###############################################################################
+
+
+# When set to a positive integer, enables chunking for long sequences by
+# splitting sequences at low-entropy frames
+MIN_CHUNK_SIZE = None
+
+# Threshold below which to split the sequence when performing chunked decoding
+ENTROPY_THRESHOLD = 0.5
+
+
+###############################################################################
 # Evaluation
 ###############################################################################
 
+
+# Otherwise compare against self with no chunking
+COMPARE_WITH_REFERENCE = True
 
 # Names of all datasets
 DATASETS = ['daps', 'vctk']
@@ -47,6 +64,7 @@ PITCH_ERROR_THRESHOLDS = [0, 1, 2]
 # File for caching transition matrix for pitch decoding evaluation
 PITCH_TRANSITION_MATRIX = ASSETS_DIR / 'stats' / 'transition.pt'
 
+# Audio sampling rate
 SAMPLE_RATE = 16000
 
 # Seed for all random number generators
@@ -54,22 +72,21 @@ RANDOM_SEED = 1234
 
 
 ###############################################################################
-# settings
+# Compute
 ###############################################################################
 
-NUM_WORKERS = 0
 
+# Batch size
 BATCH_SIZE = 512
 
-USE_CHUNKING = False
+# Number of parallel CPU workers
+NUM_WORKERS = 0
 
-MIN_CHUNK_SIZE = 256
 
-# ENTROPY_THRESHOLD = 1-0.1625
-ENTROPY_THRESHOLD = 0.5
+###############################################################################
+# Metadata
+###############################################################################
 
-# Otherwise compare against self with no chunking
-COMPARE_WITH_REFERENCE = True
 
 # Allows config files to detect if this module is being configured
 CONFIGURING = None

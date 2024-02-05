@@ -1,7 +1,12 @@
 import torch
 import torbi
 
-def chunk(sequence, min_chunk_size=torbi.MIN_CHUNK_SIZE, entropy_threshold=torbi.ENTROPY_THRESHOLD):
+
+def chunk(
+    sequence,
+    min_chunk_size=torbi.MIN_CHUNK_SIZE,
+    entropy_threshold=torbi.ENTROPY_THRESHOLD
+):
     """Chunk sequence based on points of low entropy
 
     Arguments
@@ -13,7 +18,6 @@ def chunk(sequence, min_chunk_size=torbi.MIN_CHUNK_SIZE, entropy_threshold=torbi
         entropy_threshold
             Threshold for entropy to allow splitting
 
-
     Returns
         sub_sequences
             List of chunked sequence data
@@ -21,8 +25,7 @@ def chunk(sequence, min_chunk_size=torbi.MIN_CHUNK_SIZE, entropy_threshold=torbi
     split_points = split(
         sequence=sequence,
         min_chunk_size=min_chunk_size,
-        entropy_threshold=entropy_threshold
-    )
+        entropy_threshold=entropy_threshold)
 
     chunks = []
 
@@ -34,7 +37,12 @@ def chunk(sequence, min_chunk_size=torbi.MIN_CHUNK_SIZE, entropy_threshold=torbi
 
     return chunks
 
-def split(sequence, min_chunk_size=torbi.MIN_CHUNK_SIZE, entropy_threshold=torbi.ENTROPY_THRESHOLD):
+
+def split(
+    sequence,
+    min_chunk_size=torbi.MIN_CHUNK_SIZE,
+    entropy_threshold=torbi.ENTROPY_THRESHOLD
+):
     """Find split points of minimum entropy"""
     sequence = sequence.T
     length = sequence.shape[-1]
@@ -49,6 +57,9 @@ def split(sequence, min_chunk_size=torbi.MIN_CHUNK_SIZE, entropy_threshold=torbi
             i += 1
     return split_points
 
+
 def entropy(sequence):
     """Compute the framewise categorical entropy"""
-    return -(torch.exp(sequence) * sequence).sum(dim=0) / torch.log(torch.tensor(sequence.shape[0]))
+    return -(
+        (torch.exp(sequence) * sequence).sum(dim=0) /
+        torch.log(torch.tensor(sequence.shape[0])))
