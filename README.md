@@ -8,6 +8,9 @@
 </div>
 
 
+Performs Viterbi decoding (with 1440 states/categories) approximately 10.3x faster on a 16-core CPU and 290x faster on an RTX 4090 GPU (batch size 512) relative to a commonly-used CPU-only reference implementation in [`librosa`](https://librosa.org/doc/main/index.html). Also includes our proposed chunked Viterbi decoding, which speeds up long sequence decoding by splitting at low-entropy frames to permit batching.
+
+
 ## Table of contents
 
 - [Installation](#installation)
@@ -219,13 +222,13 @@ def from_files_to_files(
 ### Command-line interface
 
 ```
-usage: python -m torbi 
-    [-h] 
-    --input_files INPUT_FILES [INPUT_FILES ...] 
-    --output_files OUTPUT_FILES [OUTPUT_FILES ...] 
-    [--transition_file TRANSITION_FILE] 
-    [--initial_file INITIAL_FILE] 
-    [--log_probs] 
+usage: python -m torbi
+    [-h]
+    --input_files INPUT_FILES [INPUT_FILES ...]
+    --output_files OUTPUT_FILES [OUTPUT_FILES ...]
+    [--transition_file TRANSITION_FILE]
+    [--initial_file INITIAL_FILE]
+    [--log_probs]
     [--gpu GPU]
 
 arguments:
@@ -243,8 +246,6 @@ optional arguments:
   --log_probs           Whether inputs are in (natural) log space
   --gpu GPU             GPU index to use for decoding. Defaults to CPU.
 ```
-
-**TODO - docstring**
 
 
 ## Evaluation
@@ -284,16 +285,10 @@ Evaluates the accuracy and speed of decoding methods. `<gpu>` is the GPU index.
 ## Citation
 
 ### IEEE
-M. Morrison, C. Churchwell, N. Pruyne, and B. Pardo, "Fine-Grained and Interpretable Neural Speech Editing," Submitted to International Conference on Machine Learning, <TODO - month> 2024.
+
+Coming soon
 
 
 ### BibTex
 
-```
-@inproceedings{morrison2024fine,
-    title={Fine-Grained and Interpretable Neural Speech Editing},
-    author={Morrison, Max and Churchwell, Cameron and Pruyne, Nathan and Pardo, Bryan},
-    booktitle={Submitted to International Conference on Machine Learning},
-    month={TODO},
-    year={2024}
-}
+Coming soon

@@ -4,9 +4,9 @@
 # $1 - index of GPU to use
 
 # Setup data for evaluation
-python -m torbi.data.download --datasets daps
-python -m torbi.data.preprocess --datasets daps --gpu $1
-python -m torbi.partition --datasets daps
+python -m torbi.data.download
+python -m torbi.data.preprocess --gpu $1
+python -m torbi.partition
 
 # Evaluate
-python -m torbi.evaluate --datasets daps --gpu $1
+python -m torbi.evaluate --gpu $1

@@ -13,7 +13,7 @@
 
 #define FULL_MASK 0xffffffff
 
-// Is this a good kernel? Maybe not. Does it work? Yes.
+
 __global__ void viterbi_forward_kernel(
     float* __restrict__ observation, // BATCH x FRAMES x STATES
     int* __restrict__ batch_frames, // BATCH
@@ -90,7 +90,7 @@ __global__ void viterbi_forward_kernel(
         }
         float *posterior_last = posterior_current;
         posterior_current = posterior_next;
-        posterior_next = posterior_last; 
+        posterior_next = posterior_last;
         __syncthreads();
     }
 

@@ -16,6 +16,7 @@ from torbi.core import save, save_masked
 # Reference implementation of Viterbi decoding
 ###############################################################################
 
+
 def from_dataloader(
     dataloader: torch.utils.data.DataLoader,
     output_files: Dict[
@@ -24,7 +25,6 @@ def from_dataloader(
     transition: Optional[torch.Tensor] = None,
     initial: Optional[torch.Tensor] = None,
     log_probs: bool = False,
-    save_workers: int = 0,
 ) -> None:
     """Decode time-varying categorical distributions from dataloader
 
@@ -42,8 +42,6 @@ def from_dataloader(
             shape=(states,)
         log_probs
             Whether inputs are in (natural) log space
-        save_workers
-            The number of worker threads to use for async file saving
 
     Returns
         indices
@@ -51,76 +49,40 @@ def from_dataloader(
             shape=(batch, frames)
     """
     # Setup multiprocessing
-    if save_workers == 0:
-        save_pool = contextlib.nullcontext()
-    else:
-        save_pool = mp.get_context('spawn').Pool(save_workers)
+    with mp.get_context('spawn').Pool(os.cpu_count() // 2) as pool:
 
-    with mp.get_context('spawn').Pool(os.cpu_count()//2) as librosa_pool:
+        # Setup progress bar
+        progress = torchutil.iterator(
+            range(0, len(dataloader.dataset)),
+            'reference',
+            total=len(dataloader.dataset))
 
-        try:
+        from_probs = functools.partial(
+            from_probabilities,
+            transition=transition,
+            initial=initial,
+            log_probs=log_probs)
 
-            # Setup progress bar
-            progress = torchutil.iterator(
-                range(0, len(dataloader.dataset)),
-                'reference',
-                total=len(dataloader.dataset))
+        # Iterate over dataset
+        for observations, input_filenames in dataloader:
 
-            from_probs = functools.partial(from_probabilities, transition=transition, initial=initial, log_probs=log_probs)
+            # Decode
+            with torchutil.time.context('librosa'):
+                indices = pool.map(from_probs, observations)
 
-            # Iterate over dataset
-            for observations, input_filenames in dataloader:
-            # for observation, batch_frames, input_filenames in dataloader:
+            # Get output filenames
+            filenames = [output_files[file] for file in input_filenames]
 
-                # indices = []
-                # for o in observations:
-                #     indices.append(from_probs(o))
-                with torchutil.time.context('librosa'):
-                    indices = librosa_pool.map(from_probs, observations)
+            # Save
+            for index, filename in zip(indices, filenames):
+                save(torch.tensor(index), filename)
 
-                # indices = from_probabilities(
-                #     observation=observation,
-                #     transition=transition,
-                #     initial=initial,
-                #     log_probs=log_probs,
-                # )
+            # Increment by batch size
+            progress.update(len(input_filenames))
 
-                # Get output filenames
-                filenames = [output_files[file] for file in input_filenames]
+        # Close progress bar
+        progress.close()
 
-                # Save to disk
-                if save_workers > 0:
-                    raise NotImplementedError('set save_workers = 0')
-                    # # Asynchronous save
-                    # save_pool.starmap_async(
-                    #     save_masked,
-                    #     zip(result.cpu(), filenames, frame_lengths.cpu()))
-                    # while save_pool._taskqueue.qsize() > 100:
-                    #     time.sleep(1)
-
-                else:
-
-                    # Synchronous save
-                    for indices, filename in zip(
-                        indices,
-                        filenames
-                    ):
-                        save(torch.tensor(indices), filename)
-
-                    # Increment by batch size
-                progress.update(len(input_filenames))
-
-        finally:
-
-            # Close progress bar
-            progress.close()
-
-            # Maybe shutdown multiprocessing
-            if save_workers > 0:
-                save_pool.close()
-                save_pool.join()
-            librosa_pool.close()
-            librosa_pool.join()
 
 def from_probabilities(
     observation,
@@ -162,7 +124,6 @@ def from_probabilities(
     observation = observation.cpu().numpy().astype(np.float32)
 
     # Decode
-    # with torchutil.time.context('librosa'):
     indices = librosa.sequence.viterbi(
         observation.T,
         transition,
@@ -216,15 +177,12 @@ def from_files_to_files(
     log_probs=False
 ) -> None:
     """Perform reference Viterbi decoding on many files and save"""
-    # decode_fn = functools.partial(
-    #     from_file_to_file,
-    #     transition_file=transition_file,
-    #     initial_file=initial_file,
-    #     log_probs=log_probs)
-    # for input_file, output_file in zip(input_files, output_files):
-    #     decode_fn(input_file, output_file)
-    mapping = {input_file: output_file for input_file, output_file in zip(input_files, output_files)}
-    dataloader = torbi.data.loader(input_files, collate_fn=torbi.data.collate_reference)
+    mapping = {
+        input_file: output_file
+        for input_file, output_file in zip(input_files, output_files)}
+    dataloader = torbi.data.loader(
+        input_files,
+        collate_fn=lambda item: zip(*item))
     if transition_file:
         transition = torch.load(transition_file) # comes as probs, not log probs
         if log_probs:
@@ -240,5 +198,4 @@ def from_files_to_files(
         output_files=mapping,
         transition=transition,
         initial=initial,
-        log_probs=log_probs,
-    )
+        log_probs=log_probs)

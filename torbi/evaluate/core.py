@@ -52,15 +52,21 @@ def datasets(datasets, gpu=None):
                 dataset /
                 'reference' /
                 f'{stem}.pt' for stem in stems]
-            
+
             # Create parent directories
-            (torbi.EVAL_DIR / dataset / 'reference').mkdir(parents=True, exist_ok=True)
+            (torbi.EVAL_DIR / dataset / 'reference').mkdir(
+                parents=True,
+                exist_ok=True)
             for file in reference_files:
                 file.parent.mkdir(exist_ok=True)
 
             # Run reference Librosa implementation if we haven't yet
             if not all(file.exists() for file in reference_files):
-                torbi.reference.from_files_to_files(input_files, reference_files, transition_file=transition_file, log_probs=True)
+                torbi.reference.from_files_to_files(
+                    input_files,
+                    reference_files,
+                    transition_file=transition_file,
+                    log_probs=True)
 
         else: # Compare with non-chunked
             reference_files = [
@@ -82,7 +88,12 @@ def datasets(datasets, gpu=None):
             file.parent.mkdir(exist_ok=True)
 
         # Run Viterbi decoding
-        torbi.from_files_to_files(input_files, output_files, transition_file=transition_file, log_probs=True, gpu=gpu)
+        torbi.from_files_to_files(
+            input_files,
+            output_files,
+            transition_file=transition_file,
+            log_probs=True,
+            gpu=gpu)
 
         # Initialize metrics
         metrics = torbi.evaluate.Metrics()
