@@ -1,0 +1,40 @@
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "numpy",
+    "pybind11",
+    "torch"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "torbi"
+version = "0.0.1"
+authors = [
+  { name="Cameron Churchwell", email="cameronchurchwell2024@u.northwestern.edu" },
+  { name="Max Morrison", email="maxrmorrison@gmail.com" },
+]
+description = "Optimized Viterbi decoding and fast approximations"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy", "torch", "torchutil", "yapecs"
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License"
+]
+license = {text = "MIT License"}
+keywords = ["decode", "sequence", "torch", "Viterbi"]
+
+[project.urls]
+Homepage = "https://github.com/maxrmorrison/torbi"
+Issues = "https://github.com/maxrmorrison/torbi/issues"
+
+[project.optional-dependencies]
+evaluate = [
+    "librosa",
+    "torchaudio",
+]
+
+[tool.setuptools.package-data]
+torbi = ["assets/*", "assets/*/*"]
