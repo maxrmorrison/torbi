@@ -5,7 +5,7 @@
 #include <cuda_runtime.h>
 #include <omp.h>
 
-void viterbi_forward_cuda(
+void viterbi_make_trellis_cuda(
     torch::Tensor observation,
     torch::Tensor batch_frames,
     torch::Tensor transition,
@@ -16,11 +16,20 @@ void viterbi_forward_cuda(
     int states
 );
 
+void viterbi_backtrace_trellis_cuda(
+    int *indices,
+    int *memory,
+    int *batch_frames,
+    int batch_size,
+    int max_frames,
+    int states
+);
+
 #define CHECK_CUDA(x) TORCH_CHECK(x.device().is_cuda(), #x " must be a CUDA torch::Tensor")
 #define CHECK_CONTIGUOUS(x) TORCH_CHECK(x.is_contiguous(), #x " must be contiguous")
 #define CHECK_INPUT(x) CHECK_CUDA(x); CHECK_CONTIGUOUS(x)
 
-void viterbi_forward_cpu(
+void viterbi_make_trellis_cpu(
     torch::Tensor observation_tensor,
     torch::Tensor batch_frames_tensor,
     torch::Tensor transition_tensor,
@@ -95,7 +104,7 @@ void viterbi_forward_cpu(
     }
 }
 
-void viterbi_backtrace_cpu(
+void viterbi_backtrace_trellis_cpu(
     int *indices,
     int *memory,
     int *batch_frames,
@@ -108,17 +117,19 @@ void viterbi_backtrace_cpu(
         int *indices_b = indices + max_frames * b;
         int *memory_b = memory + max_frames * states * b;
         int frames = batch_frames[b];
+        int index = indices_b[frames-1];
         for (int t=frames-1; t>=1; t--) {
-            indices_b[t-1] = memory_b[t*states+indices_b[t]];
+            index = memory_b[t*states + index];
+            indices_b[t-1] = index;
         }
     }
 }
 
-torch::Tensor viterbi_forward(
-    torch::Tensor observation,
-    torch::Tensor batch_frames,
-    torch::Tensor transition,
-    torch::Tensor initial
+torch::Tensor viterbi_decode(
+    torch::Tensor observation, // BATCH x FRAMES x STATES
+    torch::Tensor batch_frames, // BATCH
+    torch::Tensor transition, // STATES x STATES
+    torch::Tensor initial // STATES
 ) {
     assert(batch_frames.dim() == 3);
 
@@ -146,7 +157,7 @@ torch::Tensor viterbi_forward(
         CHECK_INPUT(batch_frames);
         CHECK_INPUT(transition);
         CHECK_INPUT(initial);
-        viterbi_forward_cuda(
+        viterbi_make_trellis_cuda(
             observation,
             batch_frames,
             transition,
@@ -157,7 +168,7 @@ torch::Tensor viterbi_forward(
             states
         );
     } else {
-        viterbi_forward_cpu(
+        viterbi_make_trellis_cpu(
             observation,
             batch_frames,
             transition,
@@ -172,10 +183,9 @@ torch::Tensor viterbi_forward(
     torch::Tensor indices = posterior.argmax(1);
     indices = indices.unsqueeze(1);
     indices = indices.repeat({1, max_frames});
-    indices = indices.to(torch::kInt32).cpu();
-    memory = memory.cpu();
-    batch_frames = batch_frames.cpu();
-    viterbi_backtrace_cpu(
+    indices = indices.to(torch::kInt32);
+
+    viterbi_backtrace_trellis_cuda(
         indices.data_ptr<int>(),
         memory.data_ptr<int>(),
         batch_frames.data_ptr<int>(),
@@ -184,11 +194,23 @@ torch::Tensor viterbi_forward(
         states
     );
 
-    indices = indices.to(device);
+    // indices = indices.cpu();
+    // memory = memory.cpu();
+    // batch_frames = batch_frames.cpu();
+    // viterbi_backtrace_trellis_cpu(
+    //     indices.data_ptr<int>(),
+    //     memory.data_ptr<int>(),
+    //     batch_frames.data_ptr<int>(),
+    //     batch_size,
+    //     max_frames,
+    //     states
+    // );
+
+    // indices = indices.to(device);
 
     return indices;
 }
 
 PYBIND11_MODULE(viterbi, m) {
-  m.def("forward", &viterbi_forward, "Fast (batched) Viterbi decoding on both CPU and GPU");
+  m.def("decode", &viterbi_decode, "Fast (batched) Viterbi decoding on both CPU and GPU");
 }

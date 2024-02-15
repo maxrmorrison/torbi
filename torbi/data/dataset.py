@@ -19,7 +19,7 @@ class Dataset(torch.utils.data.Dataset):
         """Retrieve the indexth item"""
         input_file = self.input_files[index]
 
-        observation = torch.load(input_file)
+        observation = torch.load(input_file, map_location='cpu')
 
         if torbi.USE_CHUNKING:
             observation = torbi.chunk(observation)

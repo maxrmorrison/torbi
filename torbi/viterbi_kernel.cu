@@ -13,8 +13,8 @@
 
 #define FULL_MASK 0xffffffff
 
-// Is this a good kernel? Maybe not. Does it work? Yes.
-__global__ void viterbi_forward_kernel(
+// Is this a perfect kernel? Maybe not. Does it work? Yes.
+__global__ void viterbi_make_trellis_kernel(
     float* __restrict__ observation, // BATCH x FRAMES x STATES
     int* __restrict__ batch_frames, // BATCH
     float* __restrict__ transition, // STATES x STATES
@@ -54,8 +54,6 @@ __global__ void viterbi_forward_kernel(
         int max_index;
         float max_value;
         for (int j=warp_id; j<states; j+=NUM_WARPS) {
-            // __syncthreads();
-
             // Indices start out as just 0-WARP_SIZE for the first WARP_SIZE elements in the array
             max_index = thread_warp_id;
             // Values start as the first WARP_SIZE elements in the row, with row selected by j
@@ -73,7 +71,7 @@ __global__ void viterbi_forward_kernel(
             }
             __syncwarp();
 
-            // This is a first attempt at a parallel reduction
+            // Parallel reduction
             for (int offset=WARP_SIZE/2; offset>0; offset/=2) {
                 float new_value = __shfl_down_sync(FULL_MASK, max_value, offset);
                 int new_index = __shfl_down_sync(FULL_MASK, max_index, offset);
@@ -84,7 +82,6 @@ __global__ void viterbi_forward_kernel(
             }
             if (thread_warp_id == 0) {
                 memory[(t)*states+j] = max_index;
-                // posterior[t*states+j] = observation[t*states+j] + max_value;
                 posterior_next[j] = observation[t*states+j] + max_value;
             }
         }
@@ -101,7 +98,27 @@ __global__ void viterbi_forward_kernel(
     __syncthreads();
 }
 
-void viterbi_forward_cuda(
+__global__ void viterbi_backtrace_trellis_kernel(
+    int *indices,
+    int *memory,
+    int *batch_frames,
+    int batch_size,
+    int max_frames,
+    int states
+) {
+    int global_thread_id = blockIdx.x * NUM_THREADS + threadIdx.x;
+    int b = global_thread_id;
+    int *indices_b = indices + max_frames * b;
+    int *memory_b = memory + max_frames * states * b;
+    int frames = batch_frames[b];
+    int index = indices_b[frames-1];
+    for (int t=frames-1; t>=1; t--) {
+        index = memory_b[t*states + index];
+        indices_b[t-1] = index;
+    }
+}
+
+void viterbi_make_trellis_cuda(
     torch::Tensor observation,
     torch::Tensor batch_frames,
     torch::Tensor transition,
@@ -120,13 +137,37 @@ void viterbi_forward_cuda(
     int device_num = observation.device().index();
     cudaSetDevice(device_num);
 
-    viterbi_forward_kernel<<<blocks, threads, 2*states*sizeof(float)>>>(
-        observation.data<float>(),
-        batch_frames.data<int>(),
-        transition.data<float>(),
-        initial.data<float>(),
-        posterior.data<float>(),
-        memory.data<int>(),
+    viterbi_make_trellis_kernel<<<blocks, threads, 2*states*sizeof(float)>>>(
+        observation.data_ptr<float>(),
+        batch_frames.data_ptr<int>(),
+        transition.data_ptr<float>(),
+        initial.data_ptr<float>(),
+        posterior.data_ptr<float>(),
+        memory.data_ptr<int>(),
+        max_frames,
+        states
+    );
+}
+
+void viterbi_backtrace_trellis_cuda(
+    int *indices,
+    int *memory,
+    int *batch_frames,
+    int batch_size,
+    int max_frames,
+    int states
+) {
+    const int threads = NUM_THREADS;
+
+    int num_blocks = (batch_size + NUM_THREADS) / NUM_THREADS;
+
+    const dim3 blocks(num_blocks);
+
+    viterbi_backtrace_trellis_kernel<<<blocks, threads>>>(
+        indices,
+        memory,
+        batch_frames,
+        batch_size,
         max_frames,
         states
     );

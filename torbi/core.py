@@ -9,7 +9,7 @@ import torch
 import torchutil
 
 import torbi
-from viterbi import forward
+from viterbi import decode
 
 
 ###############################################################################
@@ -210,11 +210,13 @@ def from_probabilities(
         observation = torch.log(observation)
     observation = observation.to(device=device, dtype=torch.float32)
 
-    # Forward pass
     #TODO make this operation in place
-    observation = torch.log(torch.exp(observation) + torch.finfo(torch.float32).tiny)
-    with torchutil.time.context('forward'):
-        indices = forward(
+    # observation = torch.log(torch.exp(observation) + torch.finfo(torch.float32).tiny)
+    torch.exp_(observation)
+    observation += torch.finfo(torch.float32).tiny
+    torch.log_(observation)
+    with torchutil.time.context('torbi'):
+        indices = decode(
             observation,
             batch_frames,
             transition,

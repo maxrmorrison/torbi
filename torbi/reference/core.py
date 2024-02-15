@@ -70,7 +70,6 @@ def from_dataloader(
 
             # Iterate over dataset
             for observations, input_filenames in dataloader:
-            # for observation, batch_frames, input_filenames in dataloader:
 
                 # indices = []
                 # for o in observations:
@@ -105,7 +104,7 @@ def from_dataloader(
                         indices,
                         filenames
                     ):
-                        save(torch.tensor(indices), filename)
+                        save(indices, filename)
 
                     # Increment by batch size
                 progress.update(len(input_filenames))
