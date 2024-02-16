@@ -220,7 +220,8 @@ def from_probabilities(
             observation,
             batch_frames,
             transition,
-            initial
+            initial,
+            torbi.NUM_WORKERS
         )
 
     return indices
