@@ -132,6 +132,7 @@ torch::Tensor viterbi_decode(
     torch::Tensor initial, // STATES
     int num_threads
 ) {
+    omp_set_num_threads(num_threads);
     assert(batch_frames.dim() == 3);
 
     auto device = observation.device();

@@ -108,13 +108,15 @@ __global__ void viterbi_backtrace_trellis_kernel(
 ) {
     int global_thread_id = blockIdx.x * NUM_THREADS + threadIdx.x;
     int b = global_thread_id;
-    int *indices_b = indices + max_frames * b;
-    int *memory_b = memory + max_frames * states * b;
-    int frames = batch_frames[b];
-    int index = indices_b[frames-1];
-    for (int t=frames-1; t>=1; t--) {
-        index = memory_b[t*states + index];
-        indices_b[t-1] = index;
+    if (b < batch_size) {
+        int *indices_b = indices + max_frames * b;
+        int *memory_b = memory + max_frames * states * b;
+        int frames = batch_frames[b];
+        int index = indices_b[frames-1];
+        for (int t=frames-1; t>=1; t--) {
+            index = memory_b[t*states + index];
+            indices_b[t-1] = index;
+        }   
     }
 }
 
