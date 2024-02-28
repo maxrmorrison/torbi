@@ -307,7 +307,7 @@ M. Morrison, C. Churchwell, N. Pruyne, and B. Pardo, "TODO," TODO, TODO 2024.
 ### BibTex
 
 ```
-@inproceedings{TODO,
+@inproceedings{morrison2024fine,
     title={TODO},
     author={Morrison, Max and Churchwell, Cameron and Pruyne, Nathan and Pardo, Bryan},
     booktitle={TODO},
