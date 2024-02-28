@@ -11,6 +11,7 @@
 ## Table of contents
 
 - [Installation](#installation)
+- [Metrics](#metrics)
 - [Decoding](#decoding)
     * [Application programming interface](#application-programming-interface)
         * [`torbi.from_probabilities`](#torbifrom_probabilities)
@@ -41,6 +42,22 @@ To perform evaluation of the accuracy and speed of decoding methods,
 install the evaluation dependencies:
 
 `pip install torbi[evaluate]`
+
+## Metrics
+We use Viterbi decoding to decode distributions over pitch inferred by a pitch estimating neural network. We compare our proposed implementation to the reference implementation in Librosa that uses just-in-time compilation via numba.
+
+Unless otherwise noted, all recorded with batch size 512 on a subset of 8192 files randomly selected from VCTK
+
+| Method  | Real Time Factor (higher is better) |
+| ------------- | ------------- |
+| Librosa (1x cpu)| 2.08 |
+| Librosa (16x cpu)| 13.82* |
+| Proposed (1x cpu)| 1.71 |
+| Proposed (16x cpu)| **22.40** |
+| Proposed (1x a40 gpu, batch size 1)| **39444.52** |
+| Proposed (1x a40 gpu)| **6921604.22** |
+
+*We use a Multiprocessing pool to parallelize the Librosa implementation.
 
 
 ## Decoding

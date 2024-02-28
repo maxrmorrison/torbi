@@ -129,7 +129,8 @@ torch::Tensor viterbi_decode(
     torch::Tensor observation, // BATCH x FRAMES x STATES
     torch::Tensor batch_frames, // BATCH
     torch::Tensor transition, // STATES x STATES
-    torch::Tensor initial // STATES
+    torch::Tensor initial, // STATES
+    int num_threads
 ) {
     assert(batch_frames.dim() == 3);
 
@@ -168,6 +169,7 @@ torch::Tensor viterbi_decode(
             states
         );
     } else {
+        omp_set_num_threads(num_threads);
         viterbi_make_trellis_cpu(
             observation,
             batch_frames,
@@ -185,28 +187,29 @@ torch::Tensor viterbi_decode(
     indices = indices.repeat({1, max_frames});
     indices = indices.to(torch::kInt32);
 
-    viterbi_backtrace_trellis_cuda(
-        indices.data_ptr<int>(),
-        memory.data_ptr<int>(),
-        batch_frames.data_ptr<int>(),
-        batch_size,
-        max_frames,
-        states
-    );
-
-    // indices = indices.cpu();
-    // memory = memory.cpu();
-    // batch_frames = batch_frames.cpu();
-    // viterbi_backtrace_trellis_cpu(
-    //     indices.data_ptr<int>(),
-    //     memory.data_ptr<int>(),
-    //     batch_frames.data_ptr<int>(),
-    //     batch_size,
-    //     max_frames,
-    //     states
-    // );
-
-    // indices = indices.to(device);
+    if (device.is_cuda()) {
+        CHECK_INPUT(indices);
+        CHECK_INPUT(memory);
+        CHECK_INPUT(batch_frames);
+        viterbi_backtrace_trellis_cuda(
+            indices.data_ptr<int>(),
+            memory.data_ptr<int>(),
+            batch_frames.data_ptr<int>(),
+            batch_size,
+            max_frames,
+            states
+        );
+    } else {
+        omp_set_num_threads(num_threads);
+        viterbi_backtrace_trellis_cpu(
+            indices.data_ptr<int>(),
+            memory.data_ptr<int>(),
+            batch_frames.data_ptr<int>(),
+            batch_size,
+            max_frames,
+            states
+        );
+    }
 
     return indices;
 }

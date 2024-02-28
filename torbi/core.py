@@ -25,7 +25,8 @@ def from_dataloader(
     initial: Optional[torch.Tensor] = None,
     log_probs: bool = False,
     save_workers: int = 0,
-    gpu: Optional[int] = None
+    gpu: Optional[int] = None,
+    num_threads: Optional[int] = None
 ) -> None:
     """Decode time-varying categorical distributions from dataloader
 
@@ -47,6 +48,8 @@ def from_dataloader(
             The number of worker threads to use for async file saving
         gpu
             The index of the GPU to use for inference
+        num_threads
+            The number of threads to use for parallelized decoding
 
     Returns
         indices
@@ -77,7 +80,8 @@ def from_dataloader(
                 transition=transition,
                 initial=initial,
                 log_probs=log_probs,
-                gpu=gpu
+                gpu=gpu,
+                num_threads=num_threads
             )
 
             # Get output filenames
@@ -138,7 +142,8 @@ def from_probabilities(
     transition: Optional[torch.Tensor] = None,
     initial: Optional[torch.Tensor] = None,
     log_probs: bool = False,
-    gpu: Optional[int] = None
+    gpu: Optional[int] = None,
+    num_threads: Optional[int] = 1
 ) -> torch.Tensor:
     """Decode a time-varying categorical distribution
 
@@ -159,6 +164,8 @@ def from_probabilities(
             Whether inputs are in (natural) log space
         gpu
             GPU index to use for decoding. Defaults to CPU.
+        num_threads
+            The number of threads to use for parallelized decoding
 
     Returns
         indices
@@ -210,7 +217,6 @@ def from_probabilities(
         observation = torch.log(observation)
     observation = observation.to(device=device, dtype=torch.float32)
 
-    #TODO make this operation in place
     # observation = torch.log(torch.exp(observation) + torch.finfo(torch.float32).tiny)
     torch.exp_(observation)
     observation += torch.finfo(torch.float32).tiny
@@ -220,7 +226,8 @@ def from_probabilities(
             observation,
             batch_frames,
             transition,
-            initial
+            initial,
+            num_threads
         )
 
     return indices
@@ -231,7 +238,8 @@ def from_file(
     transition_file: Optional[Union[str, os.PathLike]] = None,
     initial_file: Optional[Union[str, os.PathLike]] = None,
     log_probs: bool = False,
-    gpu: Optional[int] = None
+    gpu: Optional[int] = None,
+    num_threads: Optional[int] = 1
 ) -> torch.Tensor:
     """Decode a time-varying categorical distribution file
 
@@ -249,6 +257,8 @@ def from_file(
             Whether inputs are in (natural) log space
         gpu
             GPU index to use for decoding. Defaults to CPU.
+        num_threads
+            The number of threads to use for parallelized decoding
 
     Returns
         indices
@@ -271,7 +281,9 @@ def from_file(
         transition=transition,
         initial=initial,
         log_probs=log_probs,
-        gpu=gpu)
+        gpu=gpu,
+        num_threads=num_threads
+    )
 
 
 def from_file_to_file(
@@ -280,7 +292,8 @@ def from_file_to_file(
     transition_file: Optional[Union[str, os.PathLike]] = None,
     initial_file: Optional[Union[str, os.PathLike]] = None,
     log_probs: bool = False,
-    gpu: Optional[int] = None
+    gpu: Optional[int] = None,
+    num_threads: Optional[int] = None
 ) -> None:
     """Decode a time-varying categorical distribution file and save
 
@@ -300,8 +313,10 @@ def from_file_to_file(
             Whether inputs are in (natural) log space
         gpu
             GPU index to use for decoding. Defaults to CPU.
+        num_threads
+            The number of threads to use for parallelized decoding
     """
-    indices = from_file(input_file, transition_file, initial_file, log_probs, gpu=gpu)
+    indices = from_file(input_file, transition_file, initial_file, log_probs, gpu=gpu, num_threads=num_threads)
     torch.save(indices, output_file)
 
 
@@ -311,7 +326,8 @@ def from_files_to_files(
     transition_file: Optional[Union[str, os.PathLike]] = None,
     initial_file: Optional[Union[str, os.PathLike]] = None,
     log_probs: bool = False,
-    gpu: Optional[int] = None
+    gpu: Optional[int] = None,
+    num_threads: Optional[int] = None
 ) -> None:
     """Decode time-varying categorical distribution files and save
 
@@ -331,6 +347,8 @@ def from_files_to_files(
             Whether inputs are in (natural) log space
         gpu
             GPU index to use for decoding. Defaults to CPU.
+        num_threads
+            The number of threads to use for parallelized decoding
     """
     if transition_file:
         transition = torch.load(transition_file)
@@ -351,7 +369,8 @@ def from_files_to_files(
         transition=transition,
         initial=initial,
         log_probs=log_probs,
-        gpu=gpu
+        gpu=gpu,
+        num_threads=num_threads
     )
 
 
