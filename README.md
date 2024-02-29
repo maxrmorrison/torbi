@@ -47,12 +47,11 @@ Dependencies:
 - [CUDA toolkit](https://developer.nvidia.com/cuda-toolkit)
 - g++ 11
 
-To install just the core of torbi:
+To perform decoding, install `torbi` as follows.
 
 `pip install torbi`
 
-To perform evaluation of the accuracy and speed of decoding methods,
-install the evaluation dependencies:
+To perform evaluation of the accuracy and speed of decoding methods, install `torbi` with the additional evaluation dependencies.
 
 `pip install torbi[evaluate]`
 
