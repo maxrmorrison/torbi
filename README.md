@@ -261,8 +261,6 @@ optional arguments:
   --gpu GPU             GPU index to use for decoding. Defaults to CPU.
 ```
 
-**TODO - docstring**
-
 
 ## Evaluation
 
