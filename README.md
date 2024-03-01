@@ -16,7 +16,7 @@ Highly parallelizable Viterbi decoding for CPU or GPU compute. Below are time be
 | Librosa (16x cpu)| 1,382* |
 | Proposed (1x cpu)| 171 |
 | Proposed (16x cpu)| **2,240** |
-| Proposed (1x a40 gpu, batch size 1)| **39,444,52** |
+| Proposed (1x a40 gpu, batch size 1)| **3,944,452** |
 | Proposed (1x a40 gpu, batch size 512)| **692,160,422** |
 
 *By default, `librosa.sequence.viterbi` uses one CPU thread. We use a Multiprocessing pool to parallelize.
