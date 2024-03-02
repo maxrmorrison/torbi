@@ -105,6 +105,13 @@ __global__ void viterbi_make_trellis_kernel(
     __syncthreads();
 }
 
+// Trace back through the trellis to find sequence with maximal
+// probability.
+// indices, memory, and batch frames are all data pointers
+// to the batch_frames tensor and the indices and memory tensors
+// created by the viterbi_make_trellis_kernel (see above).
+// The loop in this kernel only executes a few times so the
+// uncoalesced memory accesses are negligible.
 __global__ void viterbi_backtrace_trellis_kernel(
     int *indices,
     int *memory,
@@ -127,6 +134,15 @@ __global__ void viterbi_backtrace_trellis_kernel(
     }
 }
 
+// Create trellis by working forward to determine most likely next states.
+// The resulting graph is stored in the memory_tensor, and the final posterior
+// distribution is stored in posterior_tensor.
+// observation: BATCH x FRAMES x STATES
+// batch_frames: BATCH
+// transition: STATES x STATES
+// initial: STATES
+// posterior: BATCH x STATES
+// memory: BATCH x FRAMES x STATES
 void viterbi_make_trellis_cuda(
     torch::Tensor observation,
     torch::Tensor batch_frames,
@@ -158,6 +174,11 @@ void viterbi_make_trellis_cuda(
     );
 }
 
+// Trace back through the trellis to find sequence with maximal
+// probability.
+// indices, memory, and batch frames are all data pointers
+// to the batch_frames tensor and the indices and memory tensors
+// created by the viterbi_make_trellis_kernel (see above).
 void viterbi_backtrace_trellis_cuda(
     int *indices,
     int *memory,

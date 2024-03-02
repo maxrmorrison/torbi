@@ -38,6 +38,7 @@ void viterbi_backtrace_trellis_cuda(
 // batch_frames_tensor: BATCH
 // transition_tensor: STATES x STATES
 // initial_tensor: STATES
+// posterior_tensor: BATCH x STATES
 // memory_tensor: BATCH x FRAMES x STATES
 void viterbi_make_trellis_cpu(
     torch::Tensor observation_tensor,
@@ -119,6 +120,11 @@ void viterbi_make_trellis_cpu(
     delete probability;
 }
 
+// Trace back through the trellis to find sequence with maximal
+// probability.
+// indices, memory, and batch frames are all data pointers
+// to the batch_frames tensor and the indices and memory tensors
+// created by the viterbi_make_trellis_kernel (see above).
 void viterbi_backtrace_trellis_cpu(
     int *indices,
     int *memory,
