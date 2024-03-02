@@ -8,7 +8,7 @@
 </div>
 
 
-Highly parallelizable Viterbi decoding for CPU or GPU compute. Below are time benchmarks of our method relative to `librosa.sequence.viterbi`. We use 1440 states and ~200 million timesteps over ~40k files for benchmarking.
+Highly parallelizable Viterbi decoding for CPU or GPU compute. Below are time benchmarks of our method relative to `librosa.sequence.viterbi`. We use 1440 states and ~20 million timesteps over ~40k files for benchmarking.
 
 | Method  | Timesteps decoded per second |
 | ------------- | ------------- |
@@ -232,13 +232,13 @@ def from_files_to_files(
 ### Command-line interface
 
 ```
-usage: python -m torbi 
-    [-h] 
-    --input_files INPUT_FILES [INPUT_FILES ...] 
-    --output_files OUTPUT_FILES [OUTPUT_FILES ...] 
-    [--transition_file TRANSITION_FILE] 
-    [--initial_file INITIAL_FILE] 
-    [--log_probs] 
+usage: python -m torbi
+    [-h]
+    --input_files INPUT_FILES [INPUT_FILES ...]
+    --output_files OUTPUT_FILES [OUTPUT_FILES ...]
+    [--transition_file TRANSITION_FILE]
+    [--initial_file INITIAL_FILE]
+    [--log_probs]
     [--gpu GPU]
 
 arguments:
