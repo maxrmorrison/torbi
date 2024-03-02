@@ -146,6 +146,26 @@ void viterbi_backtrace_trellis_cpu(
     }
 }
 
+
+// Decode a time-varying categorical distribution
+//
+//     Args:
+//         observation: :math:`(N, T, S)` or :math:`(T, S)`
+//             where `S = the number of states`, `T = the length of the sequence`,
+//             and `N = batch size`.
+//             Time-varying categorical distribution
+//         batch_frames :math:`(N)`
+//             Sequence length of each batch item
+//         transition :math:`(S, S)`
+//             Categorical transition matrix
+//         initial :math:`(S)`
+//             Categorical initial distribution
+//         num_threads (int, optional)
+//             Number of threads to use if doing CPU decoding
+//
+//     Return:
+//         indices: :math:`(N, T)`
+//             The decoded bin indices
 torch::Tensor viterbi_decode(
     torch::Tensor observation, // BATCH x FRAMES x STATES
     torch::Tensor batch_frames, // BATCH
