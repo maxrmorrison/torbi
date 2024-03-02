@@ -45,31 +45,44 @@ C++ CPU implementation of Viterbi decoding
 ******************************************************************************/
 
 
-// Create trellis by working forward to determine most likely next states.
-// The resulting graph is stored in the trellis_tensor, and the final posterior
-// distribution is stored in posterior_tensor.
-// observation_tensor: BATCH x FRAMES x STATES
-// batch_frames_tensor: BATCH
-// transition_tensor: STATES x STATES
-// initial_tensor: STATES
-// posterior_tensor: BATCH x STATES
-// trellis_tensor: BATCH x FRAMES x STATES
+/// C++ CPU implementation of first step of Viterbi decoding: making the
+/// trellis matrix
+///
+/// Args:
+///   observation: :math:`(N, T, S)` or :math:`(T, S)`
+///     where `S = the number of states`,
+///     `T = the length of the sequence`,
+///     and `N = batch size`.
+///     Time-varying categorical distribution
+///   batch_frames :math:`(N)`
+///     Sequence length of each batch item
+///     shape=(batch,)
+///   transition :math:`(S, S)`
+///     Categorical transition matrix
+///   initial :math:`(S)`
+///     Categorical initial distribution
+///
+/// Modifies:
+///   posterior: :math:`(N, S)`
+///     Minimum path costs
+///   trellis: :math:`(N, T, S)`
+///     Matrix of minimum path indices for backtracing
 void viterbi_make_trellis_cpu(
-    torch::Tensor observation_tensor,
-    torch::Tensor batch_frames_tensor,
-    torch::Tensor transition_tensor,
-    torch::Tensor initial_tensor,
-    torch::Tensor posterior_tensor,
+    torch::Tensor observation,
+    torch::Tensor batch_frames,
+    torch::Tensor transition,
+    torch::Tensor initial,
+    torch::Tensor posterior,
     torch::Tensor trellis_tensor
 ) {
-    int batch_size = observation_tensor.size(0);
-    int max_frames = observation_tensor.size(1);
-    int states = observation_tensor.size(2);
-    float *observation_base = observation_tensor.data_ptr<float>();
-    int *batch_frames = batch_frames_tensor.data_ptr<int>();
-    float *transition = transition_tensor.data_ptr<float>();
-    float *initial = initial_tensor.data_ptr<float>();
-    float *posterior_base = posterior_tensor.data_ptr<float>();
+    int batch_size = observation.size(0);
+    int max_frames = observation.size(1);
+    int states = observation.size(2);
+    float *observation_base = observation.data_ptr<float>();
+    int *batch_frames_ptr = batch_frames.data_ptr<int>();
+    float *transition_ptr = transition.data_ptr<float>();
+    float *initial_ptr = initial.data_ptr<float>();
+    float *posterior_base = posterior.data_ptr<float>();
     int *trellis_base = trellis_tensor.data_ptr<int>();
 
     int states2 = states*states;
@@ -79,21 +92,21 @@ void viterbi_make_trellis_cpu(
     float *probability = new float[states2];
 
     int frames;
-    float* observation;
+    float* obs;
     int* trellis;
-    float* posterior;
+    float* posterior_ptr;
 
     float max_posterior;
 
     for (int b=0; b<batch_size; b++) {
-        frames = batch_frames[b];
-        observation = observation_base + b*max_frames*states;
-        posterior = posterior_base + b*states;
+        frames = batch_frames_ptr[b];
+        obs = observation_base + b*max_frames*states;
+        posterior_ptr = posterior_base + b*states;
         trellis = trellis_base + b*max_frames*states;
 
         #pragma omp parallel for schedule(static)
         for (int i=0; i<states; i++) {
-            posterior_current[i] = observation[i] + initial[i];
+            posterior_current[i] = obs[i] + initial_ptr[i];
         }
 
         for (int t=1; t<frames; t++) {
@@ -101,7 +114,7 @@ void viterbi_make_trellis_cpu(
             #pragma omp parallel for simd schedule(static)
             for (int i=0; i<states2; i++) {
                 int s1 = i % states;
-                probability[i] = posterior_current[s1] + transition[i];
+                probability[i] = posterior_current[s1] + transition_ptr[i];
             }
 
             // Get optimal
@@ -115,7 +128,7 @@ void viterbi_make_trellis_cpu(
                         trellis[t*states+j] = s3;
                     }
                 }
-                posterior_next[j] = observation[t*states+j] + max_posterior;
+                posterior_next[j] = obs[t*states+j] + max_posterior;
             }
             float *posterior_last = posterior_current;
             posterior_current = posterior_next;
@@ -124,7 +137,7 @@ void viterbi_make_trellis_cpu(
 
         // #pragma omp parallel for simd schedule(static)
         for (int i=0; i<states; i++) {
-            posterior[i] = posterior_current[i];
+            posterior_ptr[i] = posterior_current[i];
         }
     }
 
@@ -134,11 +147,25 @@ void viterbi_make_trellis_cpu(
     delete probability;
 }
 
-// Trace back through the trellis to find sequence with maximal
-// probability.
-// indices, trellis, and batch frames are all data pointers
-// to the batch_frames tensor and the indices and trellis tensors
-// created by the viterbi_make_trellis_kernel (see above).
+
+/// C++ CPU implementation of the second step of Viterbi decoding: backtracing
+/// the trellis to find the maximum likelihood path
+///
+/// Args:
+///   trellis: :math:`(N, T, S)`
+///     Matrix of minimum path indices for backtracing
+///   batch_frames :math:`(N)`
+///     Sequence length of each batch item
+///   batch_size
+///     Number of observation sequences in the batch
+///   max_frames
+///     Maximum number of frames of any observation sequence in the batch
+///   states
+///     Number of categories in the categorical distribution being decoded
+///
+/// Modifies:
+///   indices: :math:`(N, T)`
+///     The decoded bin indices
 void viterbi_backtrace_trellis_cpu(
     int *indices,
     int *trellis,

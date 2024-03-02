@@ -232,8 +232,7 @@ void viterbi_make_trellis_cuda(
         posterior.data_ptr<float>(),
         trellis.data_ptr<int>(),
         max_frames,
-        states
-    );
+        states);
 }
 
 
@@ -272,6 +271,5 @@ void viterbi_backtrace_trellis_cuda(
         batch_frames,
         batch_size,
         max_frames,
-        states
-    );
+        states);
 }

@@ -1,13 +1,13 @@
-from torch import Tensor
+import torch
 from typing import Optional
 
+
 def decode(
-    observation: Tensor,
-    batch_frames: Tensor,
-    transition: Tensor,
-    initial: Tensor,
-    num_threads: Optional[int] = 0
-):
+    observation: torch.Tensor,
+    batch_frames: torch.Tensor,
+    transition: torch.Tensor,
+    initial: torch.Tensor
+) -> torch.Tensor:
     """Decode a time-varying categorical distribution
 
     Args:
@@ -22,8 +22,6 @@ def decode(
             Categorical transition matrix
         initial :math:`(S)`
             Categorical initial distribution
-        num_threads (int, optional)
-            Number of threads to use if doing CPU decoding
 
     Return:
         indices: :math:`(N, T)`
@@ -43,5 +41,9 @@ def decode(
             >>>     [0.25, 0.25, 0.5]
             >>> ])
             >>> initial = torch.tensor([0.4, 0.35, 0.25])
-            >>> bins = viterbi.decode(observation, batch_frames, transition, initial)
+            >>> bins = viterbi.decode(
+            >>>     observation,
+            >>>     batch_frames,
+            >>>     transition,
+            >>>     initial)
     """
