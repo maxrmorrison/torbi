@@ -21,33 +21,30 @@ Viterbi decoding CUDA kernels
 
 /// CUDA kernel for first step of Viterbi decoding: making the trellis matrix
 ///
-/// Arguments
-///   observation
+/// Args:
+///   observation: :math:`(N, T, S)` or :math:`(T, S)`
+///     where `S = the number of states`, `T = the length of the sequence`,
+///     and `N = batch size`.
 ///     Time-varying categorical distribution
-///       shape=(batch, frames, states)
-///   batch_frames
-///     Number of frames in each batch item; defaults to all
+///   batch_frames :math:`(N)`
+///     Sequence length of each batch item
 ///     shape=(batch,)
-///   transition
-///     Categorical transition matrix; defaults to uniform
-///     shape=(states, states)
-///   initial
-///     Categorical initial distribution; defaults to uniform
-///     shape=(states,)
+///   transition :math:`(S, S)`
+///     Categorical transition matrix
+///   initial :math:`(S)`
+///     Categorical initial distribution
 ///   max_frames
 ///     Maximum number of frames of any observation sequence in the batch
 ///   states
 ///     Number of categories in the categorical distribution being decoded
 ///
-/// Modifies
-///   posterior
-///     Overwritten with minimum path costs
-///     shape=(batch, states)
-///   trellis
-///     Overwritten with minimum path indices for backtracing (step two)
-///     shape=(batch, frames, states)
+/// Modifies:
+///   posterior: :math:`(N, S)`
+///     Minimum path costs
+///   trellis: :math:`(N, T, S)`
+///     Matrix of minimum path indices for backtracing
 ///
-/// Kernel description
+/// Kernel description:
 ///   We parallelize over the batch dimension by concurrently utilizing
 ///   multiple GPU thread blocks. We loop over timesteps and then states; we
 ///   assign one warp to each state. Each warp computes part of the posterior
@@ -55,12 +52,12 @@ Viterbi decoding CUDA kernels
 ///   operations to find current next best state from the starting state (the
 ///   state the warp is assigned to).
 __global__ void viterbi_make_trellis_kernel(
-    float* __restrict__ observation, // BATCH x FRAMES x STATES
-    int* __restrict__ batch_frames, // BATCH
-    float* __restrict__ transition, // STATES x STATES
-    float* __restrict__ initial, // STATES
-    float* __restrict__ posterior, // BATCH x STATES
-    int* __restrict__ trellis, // BATCH x FRAMES x STATES
+    float* __restrict__ observation,
+    int* __restrict__ batch_frames,
+    float* __restrict__ transition,
+    float* __restrict__ initial,
+    float* __restrict__ posterior,
+    int* __restrict__ trellis,
     int max_frames,
     int states
 ) {
@@ -141,13 +138,11 @@ __global__ void viterbi_make_trellis_kernel(
 /// CUDA kernel for second step of Viterbi decoding: backtracing the trellis
 /// to find the maximum likelihood path
 ///
-/// Arguments
-///   trellis
-///     Minimum path indices for backtracing; constructed in the first step
-///     shape=(batch, frames, states)
-///   batch_frames
-///     Number of frames in each batch item; defaults to all
-///     shape=(batch,)
+/// Args:
+///   trellis: :math:`(N, T, S)`
+///     Matrix of minimum path indices for backtracing
+///   batch_frames :math:`(N)`
+///     Sequence length of each batch item
 ///   batch_size
 ///     Number of observation sequences in the batch
 ///   max_frames
@@ -155,9 +150,9 @@ __global__ void viterbi_make_trellis_kernel(
 ///   states
 ///     Number of categories in the categorical distribution being decoded
 ///
-/// Modifies
-///   indices
-///     Overwritten with indices of the path that maximizes likelihood
+/// Modifies:
+///   indices: :math:`(N, T)`
+///     The decoded bin indices
 __global__ void viterbi_backtrace_trellis_kernel(
     int *indices,
     int *trellis,
@@ -196,27 +191,24 @@ C++ API for accessing Viterbi decoding CUDA kernels
 
 /// C++ API for first step of Viterbi decoding: making the trellis matrix
 ///
-/// Arguments
-///   observation
+/// Args:
+///   observation: :math:`(N, T, S)` or :math:`(T, S)`
+///     where `S = the number of states`, `T = the length of the sequence`,
+///     and `N = batch size`.
 ///     Time-varying categorical distribution
-///       shape=(batch, frames, states)
-///   batch_frames
-///     Number of frames in each batch item; defaults to all
-///     shape=(batch,)
-///   transition
-///     Categorical transition matrix; defaults to uniform
-///     shape=(states, states)
-///   initial
-///     Categorical initial distribution; defaults to uniform
-///     shape=(states,)
+///   batch_frames :math:`(N)`
+///     Sequence length of each batch item
+///   transition :math:`(S, S)`
+///     Categorical transition matrix
+///   initial :math:`(S)`
+///     Categorical initial distribution
 ///
-/// Modifies
+/// Modifies:
 ///   posterior
 ///     Overwritten with the minimum cost path matrix
 ///     shape=(batch, states)
-///   trellis
-///     Overwritten with minimum cost path indices for backtracing (step two)
-///     shape=(batch, frames, states)
+///   trellis: :math:`(N, T, S)`
+///     Matrix of minimum path indices for backtracing
 void viterbi_make_trellis_cuda(
     torch::Tensor observation,
     torch::Tensor batch_frames,
@@ -248,13 +240,11 @@ void viterbi_make_trellis_cuda(
 /// C++ API for second step of Viterbi decoding: backtracing the trellis
 /// to find the maximum likelihood path
 ///
-/// Arguments
-///   trellis
-///     Minimum path indices for backtracing; constructed in the first step
-///     shape=(batch, frames, states)
-///   batch_frames
-///     Number of frames in each batch item; defaults to all
-///     shape=(batch,)
+/// Args:
+///   trellis: :math:`(N, T, S)`
+///     Matrix of minimum path indices for backtracing
+///   batch_frames :math:`(N)`
+///     Sequence length of each batch item
 ///   batch_size
 ///     Number of observation sequences in the batch
 ///   max_frames
@@ -262,9 +252,9 @@ void viterbi_make_trellis_cuda(
 ///   states
 ///     Number of categories in the categorical distribution being decoded
 ///
-/// Modifies
-///   indices
-///     Overwritten with indices of the path that maximizes likelihood
+/// Modifies:
+///   indices: :math:`(N, T)`
+///     The decoded bin indices
 void viterbi_backtrace_trellis_cuda(
     int *indices,
     int *trellis,

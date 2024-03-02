@@ -12,7 +12,8 @@ def decode(
 
     Args:
         observation: :math:`(N, T, S)` or :math:`(T, S)`
-            where `S = the number of states`, `T = the length of the sequence`,
+            where `S = the number of states`,
+            `T = the length of the sequence`,
             and `N = batch size`.
             Time-varying categorical distribution
         batch_frames :math:`(N)`
