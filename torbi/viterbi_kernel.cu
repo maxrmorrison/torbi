@@ -13,7 +13,14 @@
 
 #define FULL_MASK 0xffffffff
 
-// Is this a perfect kernel? Maybe not. Does it work? Yes.
+// Is this a perfect kernel? Maybe not. Does it work? Yes. Yes it does.
+// Each thread block processes one input sequence at a time.
+// The kernel loops over timesteps and then states, with one entire warp assigned to each
+// state. Each warp computes part of the posterior distribution and then performs
+// a parallel argmax using warp shift operations to find current next best state
+// from the starting state (the state the warp is assigned to).
+// Some fun pointer tricks save us from having to store the entire posterior
+// distribution.
 __global__ void viterbi_make_trellis_kernel(
     float* __restrict__ observation, // BATCH x FRAMES x STATES
     int* __restrict__ batch_frames, // BATCH
@@ -126,13 +133,13 @@ void viterbi_make_trellis_cuda(
     torch::Tensor transition,
     torch::Tensor initial,
     torch::Tensor posterior,
-    torch::Tensor memory,
-    int max_frames,
-    int states
+    torch::Tensor memory
 ) {
     const int threads = NUM_THREADS;
 
     int batch_size = observation.size(0);
+    int max_frames = observation.size(1);
+    int states = observation.size(2);
 
     const dim3 blocks(batch_size);
 

@@ -5,15 +5,14 @@
 #include <cuda_runtime.h>
 #include <omp.h>
 
+// forward definitions
 void viterbi_make_trellis_cuda(
     torch::Tensor observation,
     torch::Tensor batch_frames,
     torch::Tensor transition,
     torch::Tensor initial,
     torch::Tensor posterior,
-    torch::Tensor memory,
-    int max_frames,
-    int states
+    torch::Tensor memory
 );
 
 void viterbi_backtrace_trellis_cuda(
@@ -25,21 +24,32 @@ void viterbi_backtrace_trellis_cuda(
     int states
 );
 
+
+// torch input validation macros
 #define CHECK_CUDA(x) TORCH_CHECK(x.device().is_cuda(), #x " must be a CUDA torch::Tensor")
 #define CHECK_CONTIGUOUS(x) TORCH_CHECK(x.is_contiguous(), #x " must be contiguous")
 #define CHECK_INPUT(x) CHECK_CUDA(x); CHECK_CONTIGUOUS(x)
 
+
+// Create trellis by working forward to determine most likely next states.
+// The resulting graph is stored in the memory_tensor, and the final posterior
+// distribution is stored in posterior_tensor.
+// observation_tensor: BATCH x FRAMES x STATES
+// batch_frames_tensor: BATCH
+// transition_tensor: STATES x STATES
+// initial_tensor: STATES
+// memory_tensor: BATCH x FRAMES x STATES
 void viterbi_make_trellis_cpu(
     torch::Tensor observation_tensor,
     torch::Tensor batch_frames_tensor,
     torch::Tensor transition_tensor,
     torch::Tensor initial_tensor,
     torch::Tensor posterior_tensor,
-    torch::Tensor memory_tensor,
-    int max_frames,
-    int states
+    torch::Tensor memory_tensor
 ) {
     int batch_size = observation_tensor.size(0);
+    int max_frames = observation_tensor.size(1);
+    int states = observation_tensor.size(2);
     float *observation_base = observation_tensor.data_ptr<float>();
     int *batch_frames = batch_frames_tensor.data_ptr<int>();
     float *transition = transition_tensor.data_ptr<float>();
@@ -102,6 +112,11 @@ void viterbi_make_trellis_cpu(
             posterior[i] = posterior_current[i];
         }
     }
+
+    // clean up
+    delete posterior_current;
+    delete posterior_next;
+    delete probability;
 }
 
 void viterbi_backtrace_trellis_cpu(
@@ -130,7 +145,7 @@ torch::Tensor viterbi_decode(
     torch::Tensor batch_frames, // BATCH
     torch::Tensor transition, // STATES x STATES
     torch::Tensor initial, // STATES
-    int num_threads
+    int num_threads=0
 ) {
     omp_set_num_threads(num_threads);
     assert(batch_frames.dim() == 3);
@@ -165,9 +180,7 @@ torch::Tensor viterbi_decode(
             transition,
             initial,
             posterior,
-            memory,
-            max_frames,
-            states
+            memory
         );
     } else {
         omp_set_num_threads(num_threads);
@@ -177,9 +190,7 @@ torch::Tensor viterbi_decode(
             transition,
             initial,
             posterior,
-            memory,
-            max_frames,
-            states
+            memory
         );
     }
 
@@ -216,5 +227,5 @@ torch::Tensor viterbi_decode(
 }
 
 PYBIND11_MODULE(viterbi, m) {
-  m.def("decode", &viterbi_decode, "Fast (batched) Viterbi decoding on both CPU and GPU");
+  m.def("decode", &viterbi_decode);
 }
