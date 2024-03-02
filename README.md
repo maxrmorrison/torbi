@@ -1,14 +1,25 @@
 <h1 align="center">Viterbi decoding in PyTorch</h1>
 <div align="center">
 
-[![PyPI](https://img.shields.io/pypi/v/torbi.svg)](https://pypi.python.org/pypi/torbi)
+<!-- [![PyPI](https://img.shields.io/pypi/v/torbi.svg)](https://pypi.python.org/pypi/torbi) -->
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Downloads](https://pepy.tech/badge/torbi)](https://pepy.tech/project/torbi)
+<!-- [![Downloads](https://pepy.tech/badge/torbi)](https://pepy.tech/project/torbi) -->
 
 </div>
 
 
-Performs Viterbi decoding (with 1440 states/categories) approximately 10.3x faster on a 16-core CPU and 290x faster on an RTX 4090 GPU (batch size 512) relative to a commonly-used CPU-only reference implementation in [`librosa`](https://librosa.org/doc/main/index.html). Also includes our proposed chunked Viterbi decoding, which speeds up long sequence decoding by splitting at low-entropy frames to permit batching.
+Highly parallelizable Viterbi decoding for CPU or GPU compute. Below are time benchmarks of our method relative to `librosa.sequence.viterbi`. We use 1440 states and ~20 million timesteps over ~40k files for benchmarking.
+
+| Method  | Timesteps decoded per second |
+| ------------- | ------------- |
+| Librosa (1x cpu)| 208 |
+| Librosa (16x cpu)| 1,382* |
+| Proposed (1x cpu)| 171 |
+| Proposed (16x cpu)| **2,240** |
+| Proposed (1x a40 gpu, batch size 1)| **3,944,452** |
+| Proposed (1x a40 gpu, batch size 512)| **692,160,422** |
+
+*By default, `librosa.sequence.viterbi` uses one CPU thread. We use a Multiprocessing pool to parallelize.
 
 
 ## Table of contents
@@ -36,12 +47,11 @@ Dependencies:
 - [CUDA toolkit](https://developer.nvidia.com/cuda-toolkit)
 - g++ 11
 
-To install just the core of torbi:
+To perform decoding, install `torbi` as follows.
 
 `pip install torbi`
 
-To perform evaluation of the accuracy and speed of decoding methods,
-install the evaluation dependencies:
+To perform evaluation of the accuracy and speed of decoding methods, install `torbi` with the additional evaluation dependencies.
 
 `pip install torbi[evaluate]`
 
@@ -285,10 +295,16 @@ Evaluates the accuracy and speed of decoding methods. `<gpu>` is the GPU index.
 ## Citation
 
 ### IEEE
-
-Coming soon
+M. Morrison, C. Churchwell, N. Pruyne, and B. Pardo, "TODO," TODO, TODO 2024.
 
 
 ### BibTex
 
-Coming soon
+```
+@inproceedings{TODO,
+    title={TODO},
+    author={Morrison, Max and Churchwell, Cameron and Pruyne, Nathan and Pardo, Bryan},
+    booktitle={TODO},
+    month={TODO},
+    year={2024}
+}

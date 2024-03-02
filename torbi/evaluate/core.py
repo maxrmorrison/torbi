@@ -12,7 +12,7 @@ import torbi
 ###############################################################################
 
 
-def datasets(datasets, gpu=None):
+def datasets(datasets, gpu=None, num_threads=1):
     """Evaluate Viterbi decoding methods"""
     # Cache transition matrix
     if not torbi.PITCH_TRANSITION_MATRIX.exists():
@@ -66,7 +66,8 @@ def datasets(datasets, gpu=None):
                     input_files,
                     reference_files,
                     transition_file=transition_file,
-                    log_probs=True)
+                    log_probs=True,
+                    num_threads=num_threads)
 
         else: # Compare with non-chunked
             reference_files = [
@@ -93,7 +94,8 @@ def datasets(datasets, gpu=None):
             output_files,
             transition_file=transition_file,
             log_probs=True,
-            gpu=gpu)
+            gpu=gpu,
+            num_threads=num_threads)
 
         # Initialize metrics
         metrics = torbi.evaluate.Metrics()

@@ -16,8 +16,7 @@ class Dataset(torch.utils.data.Dataset):
         """Retrieve the indexth item"""
         input_file = self.input_files[index]
 
-        # Load observations
-        observation = torch.load(input_file)
+        observation = torch.load(input_file, map_location='cpu')
 
         # Maybe chunk observations
         if torbi.MIN_CHUNK_SIZE is not None:

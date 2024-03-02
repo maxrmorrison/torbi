@@ -56,7 +56,7 @@ COMPARE_WITH_REFERENCE = True
 DATASETS = ['daps', 'vctk']
 
 # Number of randomly-selected samples to evaluate
-EVALUATION_SAMPLES = None
+EVALUATION_SAMPLES = 8192
 
 # Thresholds (in number of 5 cent bins) for raw pitch accuracy evaluation
 PITCH_ERROR_THRESHOLDS = [0, 1, 2]

@@ -25,6 +25,8 @@ def from_dataloader(
     transition: Optional[torch.Tensor] = None,
     initial: Optional[torch.Tensor] = None,
     log_probs: bool = False,
+    save_workers: int = 0,
+    num_threads=1
 ) -> None:
     """Decode time-varying categorical distributions from dataloader
 
@@ -49,7 +51,7 @@ def from_dataloader(
             shape=(batch, frames)
     """
     # Setup multiprocessing
-    with mp.get_context('spawn').Pool(os.cpu_count() // 2) as pool:
+    with mp.get_context('spawn').Pool(num_threads) as pool:
 
         # Setup progress bar
         progress = torchutil.iterator(
@@ -88,7 +90,7 @@ def from_probabilities(
     observation,
     transition=None,
     initial=None,
-    log_probs=False
+    log_probs=False,
 ) -> torch.Tensor:
     """Perform reference Viterbi decoding"""
     import librosa
@@ -174,7 +176,8 @@ def from_files_to_files(
     output_files,
     transition_file=None,
     initial_file=None,
-    log_probs=False
+    log_probs=False,
+    num_threads=1
 ) -> None:
     """Perform reference Viterbi decoding on many files and save"""
     mapping = {
@@ -198,4 +201,5 @@ def from_files_to_files(
         output_files=mapping,
         transition=transition,
         initial=initial,
-        log_probs=log_probs)
+        log_probs=log_probs,
+        num_threads=num_threads)

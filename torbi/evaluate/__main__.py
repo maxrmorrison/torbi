@@ -21,6 +21,12 @@ def parse_args():
         '--gpu',
         type=int,
         help='The index of the gpu to use for evaluation')
+    parser.add_argument(
+        '--num_threads',
+        type=int,
+        default = 1,
+        help='The number of threads to use for parellelized CPU decoding'
+    )
     return parser.parse_args()
 
 
