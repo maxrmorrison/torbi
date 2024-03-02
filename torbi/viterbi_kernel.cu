@@ -13,31 +13,63 @@
 
 #define FULL_MASK 0xffffffff
 
-// Is this a perfect kernel? Maybe not. Does it work? Yes. Yes it does.
-// Each thread block processes one input sequence at a time.
-// The kernel loops over timesteps and then states, with one entire warp assigned to each
-// state. Each warp computes part of the posterior distribution and then performs
-// a parallel argmax using warp shift operations to find current next best state
-// from the starting state (the state the warp is assigned to).
-// Some fun pointer tricks save us from having to store the entire posterior
-// distribution.
+
+/******************************************************************************
+Viterbi decoding CUDA kernels
+******************************************************************************/
+
+
+/// CUDA kernel for first step of Viterbi decoding: making the trellis matrix
+///
+/// Arguments
+///   observation
+///     Time-varying categorical distribution
+///       shape=(batch, frames, states)
+///   batch_frames
+///     Number of frames in each batch item; defaults to all
+///     shape=(batch,)
+///   transition
+///     Categorical transition matrix; defaults to uniform
+///     shape=(states, states)
+///   initial
+///     Categorical initial distribution; defaults to uniform
+///     shape=(states,)
+///   max_frames
+///     Maximum number of frames of any observation sequence in the batch
+///   states
+///     Number of categories in the categorical distribution being decoded
+///
+/// Modifies
+///   posterior
+///     Overwritten with minimum path costs
+///     shape=(batch, states)
+///   trellis
+///     Overwritten with minimum path indices for backtracing (step two)
+///     shape=(batch, frames, states)
+///
+/// Kernel description
+///   We parallelize over the batch dimension by concurrently utilizing
+///   multiple GPU thread blocks. We loop over timesteps and then states; we
+///   assign one warp to each state. Each warp computes part of the posterior
+///   distribution and then performs a parallel argmax using warp shift
+///   operations to find current next best state from the starting state (the
+///   state the warp is assigned to).
 __global__ void viterbi_make_trellis_kernel(
     float* __restrict__ observation, // BATCH x FRAMES x STATES
     int* __restrict__ batch_frames, // BATCH
     float* __restrict__ transition, // STATES x STATES
     float* __restrict__ initial, // STATES
     float* __restrict__ posterior, // BATCH x STATES
-    int* __restrict__ memory, // BATCH x FRAMES x STATES
+    int* __restrict__ trellis, // BATCH x FRAMES x STATES
     int max_frames,
     int states
 ) {
-
     // Handle batch
     int batch_id = blockIdx.x;
     int frames = batch_frames[batch_id]; // Get number of frames for this batch item
     observation += batch_id * max_frames * states;
     posterior += batch_id * states;
-    memory += batch_id * max_frames * states;
+    trellis += batch_id * max_frames * states;
 
     // The id of the warp to which this thread belongs
     int warp_id = threadIdx.x / WARP_SIZE;
@@ -88,7 +120,7 @@ __global__ void viterbi_make_trellis_kernel(
                 }
             }
             if (thread_warp_id == 0) {
-                memory[(t)*states+j] = max_index;
+                trellis[(t)*states+j] = max_index;
                 posterior_next[j] = observation[t*states+j] + max_value;
             }
         }
@@ -105,16 +137,30 @@ __global__ void viterbi_make_trellis_kernel(
     __syncthreads();
 }
 
-// Trace back through the trellis to find sequence with maximal
-// probability.
-// indices, memory, and batch frames are all data pointers
-// to the batch_frames tensor and the indices and memory tensors
-// created by the viterbi_make_trellis_kernel (see above).
-// The loop in this kernel only executes a few times so the
-// uncoalesced memory accesses are negligible.
+
+/// CUDA kernel for second step of Viterbi decoding: backtracing the trellis
+/// to find the maximum likelihood path
+///
+/// Arguments
+///   trellis
+///     Minimum path indices for backtracing; constructed in the first step
+///     shape=(batch, frames, states)
+///   batch_frames
+///     Number of frames in each batch item; defaults to all
+///     shape=(batch,)
+///   batch_size
+///     Number of observation sequences in the batch
+///   max_frames
+///     Maximum number of frames of any observation sequence in the batch
+///   states
+///     Number of categories in the categorical distribution being decoded
+///
+/// Modifies
+///   indices
+///     Overwritten with indices of the path that maximizes likelihood
 __global__ void viterbi_backtrace_trellis_kernel(
     int *indices,
-    int *memory,
+    int *trellis,
     int *batch_frames,
     int batch_size,
     int max_frames,
@@ -123,79 +169,116 @@ __global__ void viterbi_backtrace_trellis_kernel(
     int global_thread_id = blockIdx.x * NUM_THREADS + threadIdx.x;
     int b = global_thread_id;
     if (b < batch_size) {
+
+        // Get location to store maximum likelihood path
         int *indices_b = indices + max_frames * b;
-        int *memory_b = memory + max_frames * states * b;
+
+        // Get trellis to backtrace
+        int *trellis_b = trellis + max_frames * states * b;
+
+        // Get number of frames
         int frames = batch_frames[b];
+
+        // Backtrace
         int index = indices_b[frames-1];
         for (int t=frames-1; t>=1; t--) {
-            index = memory_b[t*states + index];
+            index = trellis_b[t*states + index];
             indices_b[t-1] = index;
         }
     }
 }
 
-// Create trellis by working forward to determine most likely next states.
-// The resulting graph is stored in the memory_tensor, and the final posterior
-// distribution is stored in posterior_tensor.
-// observation: BATCH x FRAMES x STATES
-// batch_frames: BATCH
-// transition: STATES x STATES
-// initial: STATES
-// posterior: BATCH x STATES
-// memory: BATCH x FRAMES x STATES
+
+/******************************************************************************
+C++ API for accessing Viterbi decoding CUDA kernels
+******************************************************************************/
+
+
+/// C++ API for first step of Viterbi decoding: making the trellis matrix
+///
+/// Arguments
+///   observation
+///     Time-varying categorical distribution
+///       shape=(batch, frames, states)
+///   batch_frames
+///     Number of frames in each batch item; defaults to all
+///     shape=(batch,)
+///   transition
+///     Categorical transition matrix; defaults to uniform
+///     shape=(states, states)
+///   initial
+///     Categorical initial distribution; defaults to uniform
+///     shape=(states,)
+///
+/// Modifies
+///   posterior
+///     Overwritten with the minimum cost path matrix
+///     shape=(batch, states)
+///   trellis
+///     Overwritten with minimum cost path indices for backtracing (step two)
+///     shape=(batch, frames, states)
 void viterbi_make_trellis_cuda(
     torch::Tensor observation,
     torch::Tensor batch_frames,
     torch::Tensor transition,
     torch::Tensor initial,
     torch::Tensor posterior,
-    torch::Tensor memory
+    torch::Tensor trellis
 ) {
     const int threads = NUM_THREADS;
-
     int batch_size = observation.size(0);
     int max_frames = observation.size(1);
     int states = observation.size(2);
-
     const dim3 blocks(batch_size);
-
     int device_num = observation.device().index();
     cudaSetDevice(device_num);
-
     viterbi_make_trellis_kernel<<<blocks, threads, 2*states*sizeof(float)>>>(
         observation.data_ptr<float>(),
         batch_frames.data_ptr<int>(),
         transition.data_ptr<float>(),
         initial.data_ptr<float>(),
         posterior.data_ptr<float>(),
-        memory.data_ptr<int>(),
+        trellis.data_ptr<int>(),
         max_frames,
         states
     );
 }
 
-// Trace back through the trellis to find sequence with maximal
-// probability.
-// indices, memory, and batch frames are all data pointers
-// to the batch_frames tensor and the indices and memory tensors
-// created by the viterbi_make_trellis_kernel (see above).
+
+/// C++ API for second step of Viterbi decoding: backtracing the trellis
+/// to find the maximum likelihood path
+///
+/// Arguments
+///   trellis
+///     Minimum path indices for backtracing; constructed in the first step
+///     shape=(batch, frames, states)
+///   batch_frames
+///     Number of frames in each batch item; defaults to all
+///     shape=(batch,)
+///   batch_size
+///     Number of observation sequences in the batch
+///   max_frames
+///     Maximum number of frames of any observation sequence in the batch
+///   states
+///     Number of categories in the categorical distribution being decoded
+///
+/// Modifies
+///   indices
+///     Overwritten with indices of the path that maximizes likelihood
 void viterbi_backtrace_trellis_cuda(
     int *indices,
-    int *memory,
+    int *trellis,
     int *batch_frames,
     int batch_size,
     int max_frames,
     int states
 ) {
     const int threads = NUM_THREADS;
-
     int num_blocks = (batch_size + NUM_THREADS) / NUM_THREADS;
-
     const dim3 blocks(num_blocks);
-
     viterbi_backtrace_trellis_kernel<<<blocks, threads>>>(
         indices,
-        memory,
+        trellis,
         batch_frames,
         batch_size,
         max_frames,

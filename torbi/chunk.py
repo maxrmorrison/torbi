@@ -1,13 +1,20 @@
+from typing import List
+
 import torch
 import torbi
 
 
+###############################################################################
+# Chunked Viterbi decoding; quickly and accurately batch process long sequences
+###############################################################################
+
+
 def chunk(
-    sequence,
-    min_chunk_size=torbi.MIN_CHUNK_SIZE,
-    entropy_threshold=torbi.ENTROPY_THRESHOLD
-):
-    """Chunk sequence based on points of low entropy
+    observation: torch.Tensor,
+    min_chunk_size: int = torbi.MIN_CHUNK_SIZE,
+    entropy_threshold: float = torbi.ENTROPY_THRESHOLD
+) -> List:
+    """Chunk observations based on points of low entropy
 
     Arguments
         observation
@@ -19,47 +26,60 @@ def chunk(
             Threshold for entropy to allow splitting
 
     Returns
-        sub_sequences
+        chunks
             List of chunked sequence data
     """
-    split_points = split(
-        sequence=sequence,
-        min_chunk_size=min_chunk_size,
-        entropy_threshold=entropy_threshold)
-
+    start = 0
     chunks = []
 
-    start = 0
-    for split_point in split_points:
-        chunks.append(sequence[start:split_point])
+    # Get split points
+    for split_point in split(
+        observation,
+        min_chunk_size=min_chunk_size,
+        entropy_threshold=entropy_threshold
+    ):
+
+        # Chunk observations
+        chunks.append(observation[start:split_point])
         start = split_point
-    chunks.append(sequence[start:]) # Grab last chunk
+
+     # Get last chunk
+    chunks.append(observation[start:])
 
     return chunks
 
 
+###############################################################################
+# Utilities
+###############################################################################
+
+
 def split(
-    sequence,
+    observation,
     min_chunk_size=torbi.MIN_CHUNK_SIZE,
     entropy_threshold=torbi.ENTROPY_THRESHOLD
-):
+) -> List[int]:
     """Find split points of minimum entropy"""
-    sequence = sequence.T
-    length = sequence.shape[-1]
-    candidates = entropy(sequence) < entropy_threshold
+    observation = observation.T
+
+    # Find low-entropy time frames
+    candidates = entropy(observation) < entropy_threshold
+
+    # Find adjacent low-entropy time frames
     split_points = []
     i = min_chunk_size
-    while i < length:
+    while i < observation.shape[-1]:
         if candidates[i] and candidates[i - 1]:
             split_points.append(i)
             i += min_chunk_size
         else:
             i += 1
+
     return split_points
 
 
-def entropy(sequence):
-    """Compute the framewise categorical entropy"""
+def entropy(observation: torch.Tensor) -> torch.Tensor:
+    """Compute framewise entropy of a sequence of categorical distributions"""
     return -(
-        (torch.exp(sequence) * sequence).sum(dim=0) /
-        torch.log(torch.tensor(sequence.shape[0])))
+        (torch.exp(observation) * observation).sum(dim=0) /
+        torch.log(torch.tensor(observation.shape[0])))

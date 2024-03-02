@@ -1,8 +1,8 @@
+import contextlib
 import math
+import multiprocessing as mp
 import os
 from typing import List, Optional, Union, Dict
-import contextlib
-import multiprocessing as mp
 
 import numpy as np
 import torch
@@ -15,6 +15,7 @@ from viterbi import decode
 ###############################################################################
 # Viterbi decoding
 ###############################################################################
+
 
 def from_dataloader(
     dataloader: torch.utils.data.DataLoader,
@@ -32,8 +33,7 @@ def from_dataloader(
 
     Arguments
         dataloader
-            A DataLoader object to do preprocessing for
-            the DataLoader must yield batches (observation, batch_frames, input_filename)
+            torbi DataLoader for asynchronous loading and preprocessing
         output_files
             A dictionary mapping input filenames to output filenames
         transition
@@ -56,85 +56,56 @@ def from_dataloader(
             The decoded bin indices
             shape=(batch, frames)
     """
-    # Setup multiprocessing
-    if save_workers == 0:
-        pool = contextlib.nullcontext()
-    else:
-        pool = mp.get_context('spawn').Pool(save_workers)
+    # Setup progress bar
+    progress = torchutil.iterator(
+        range(0, len(dataloader.dataset)),
+        torbi.CONFIG,
+        total=len(dataloader.dataset))
 
-    try:
+    # Iterate over dataset
+    for observation, batch_frames, batch_chunks, input_filenames in dataloader:
 
-        # Setup progress bar
-        progress = torchutil.iterator(
-            range(0, len(dataloader.dataset)),
-            torbi.CONFIG,
-            total=len(dataloader.dataset))
+        # Decode
+        indices = from_probabilities(
+            observation=observation,
+            batch_frames=batch_frames,
+            transition=transition,
+            initial=initial,
+            log_probs=log_probs,
+            gpu=gpu,
+            num_threads=num_threads)
 
-        # Iterate over dataset
-        for observation, batch_frames, batch_chunks, input_filenames in dataloader:
-        # for observation, batch_frames, input_filenames in dataloader:
+        # Get output filenames
+        filenames = [output_files[file] for file in input_filenames]
 
-            indices = from_probabilities(
-                observation=observation,
-                batch_frames=batch_frames,
-                transition=transition,
-                initial=initial,
-                log_probs=log_probs,
-                gpu=gpu,
-                num_threads=num_threads
-            )
+        if torbi.USE_CHUNKING:
 
-            # Get output filenames
-            filenames = [output_files[file] for file in input_filenames]
+            # Combine chunks
+            indices = torbi.data.separate(
+                indices=indices,
+                batch_chunks=batch_chunks,
+                batch_frames=batch_frames)
 
+            # Save
+            for indices, filename in zip(indices, filenames):
+                save(indices.cpu().detach(), filename)
 
-            if torbi.USE_CHUNKING:
-                indices = torbi.data.separate(
-                    indices=indices,
-                    batch_chunks=batch_chunks,
-                    batch_frames=batch_frames
-                )
-                if save_workers > 0:
-                    raise NotImplementedError('set save_workers = 0')
-                else:
-                    for indices, filename in zip(indices, filenames):
-                        save(indices.cpu().detach(), filename)
-            else:
-                # Save to disk
-                if save_workers > 0:
-                    raise NotImplementedError('set save_workers = 0')
-                    # # Asynchronous save
-                    # pool.starmap_async(
-                    #     save_masked,
-                    #     zip(result.cpu(), filenames, frame_lengths.cpu()))
-                    # while pool._taskqueue.qsize() > 100:
-                    #     time.sleep(1)
+        else:
 
-                else:
+            # Save
+            for indices, filename, frames in zip(
+                indices.cpu().detach(),
+                filenames,
+                batch_frames.cpu()
+            ):
+                save_masked(indices, filename, frames)
 
-                    # Synchronous save
-                    for indices, filename, frames in zip(
-                        indices.cpu().detach(),
-                        filenames,
-                        batch_frames.cpu()
-                    ):
-                        save_masked(
-                            indices,
-                            filename,
-                            frames)
+        # Increment by batch size
+        progress.update(len(input_filenames))
 
-                # Increment by batch size
-            progress.update(len(input_filenames))
+    # Close progress bar
+    progress.close()
 
-    finally:
-
-        # Close progress bar
-        progress.close()
-
-        # Maybe shutdown multiprocessing
-        if save_workers > 0:
-            pool.close()
-            pool.join()
 
 def from_probabilities(
     observation: torch.Tensor,
@@ -180,8 +151,7 @@ def from_probabilities(
             (batch,),
             frames,
             dtype=torch.int32,
-            device=device
-        )
+            device=device)
     batch_frames = batch_frames.to(dtype=torch.int32, device=device)
 
     # Default to uniform initial probabilities
@@ -217,18 +187,20 @@ def from_probabilities(
         observation = torch.log(observation)
     observation = observation.to(device=device, dtype=torch.float32)
 
-    # observation = torch.log(torch.exp(observation) + torch.finfo(torch.float32).tiny)
+    # Add epsilon for stability
+    # NOTE - may break gradients
     torch.exp_(observation)
     observation += torch.finfo(torch.float32).tiny
     torch.log_(observation)
+
+    # Decode
     with torchutil.time.context('torbi'):
         indices = decode(
             observation,
             batch_frames,
             transition,
             initial,
-            num_threads
-        )
+            num_threads)
 
     return indices
 
@@ -265,25 +237,31 @@ def from_file(
             The decoded bin indices
             shape=(frames,)
     """
+    # Load observations
     observation = torch.load(input_file).unsqueeze(dim=0)
+
+    # Load transition probabilities
     if transition_file:
         transition = torch.load(transition_file)
         if log_probs:
             transition = torch.log(transition)
     else:
         transition = None
+
+    # Load initial distribution
     if initial_file:
         initial = torch.load(initial_file)
     else:
         initial = None
+
+    # Decode
     return from_probabilities(
         observation=observation,
         transition=transition,
         initial=initial,
         log_probs=log_probs,
         gpu=gpu,
-        num_threads=num_threads
-    )
+        num_threads=num_threads)
 
 
 def from_file_to_file(
@@ -316,7 +294,13 @@ def from_file_to_file(
         num_threads
             The number of threads to use for parallelized decoding
     """
-    indices = from_file(input_file, transition_file, initial_file, log_probs, gpu=gpu, num_threads=num_threads)
+    indices = from_file(
+        input_file,
+        transition_file,
+        initial_file,
+        log_probs,
+        gpu=gpu,
+        num_threads=num_threads)
     torch.save(indices, output_file)
 
 
@@ -350,13 +334,16 @@ def from_files_to_files(
         num_threads
             The number of threads to use for parallelized decoding
     """
-    # Load Viterbi parameters
+    # Load transition probabilities
     if transition_file:
         transition = torch.load(transition_file)
         if log_probs:
-            transition = torch.log(transition+torch.finfo(transition.dtype).tiny)
+            transition = torch.log(
+                transition + torch.finfo(transition.dtype).tiny)
     else:
         transition = None
+
+    # Load initial distribution
     if initial_file:
         initial = torch.load(initial_file)
     else:
@@ -367,7 +354,7 @@ def from_files_to_files(
         input_file: output_file
         for input_file, output_file in zip(input_files, output_files)}
 
-    #
+    # Decode
     from_dataloader(
         dataloader=torbi.data.loader(input_files),
         output_files=mapping,
@@ -375,8 +362,7 @@ def from_files_to_files(
         initial=initial,
         log_probs=log_probs,
         gpu=gpu,
-        num_threads=num_threads
-    )
+        num_threads=num_threads)
 
 
 ###############################################################################
@@ -398,8 +384,7 @@ def from_dataloader(
 
     Arguments
         dataloader
-            A DataLoader object to do preprocessing for
-            the DataLoader must yield batches (observation, batch_frames, input_filename)
+            torbi DataLoader object for asynchronous loading and preprocessing
         output_files
             A dictionary mapping input filenames to output filenames
         transition
@@ -418,52 +403,59 @@ def from_dataloader(
             The decoded bin indices
             shape=(batch, frames)
     """
-    try:
+    # Setup progress bar
+    progress = torchutil.iterator(
+        range(0, len(dataloader.dataset)),
+        torbi.CONFIG,
+        total=len(dataloader.dataset))
 
-        # Setup progress bar
-        progress = torchutil.iterator(
-            range(0, len(dataloader.dataset)),
-            torbi.CONFIG,
-            total=len(dataloader.dataset))
+    # Iterate over dataset
+    for (
+        observation,
+        batch_frames,
+        batch_chunks,
+        input_filenames
+    ) in dataloader:
 
-        # Iterate over dataset
-        for observation, batch_frames, batch_chunks, input_filenames in dataloader:
+        # Decode
+        indices = from_probabilities(
+            observation=observation,
+            batch_frames=batch_frames,
+            transition=transition,
+            initial=initial,
+            log_probs=log_probs,
+            gpu=gpu)
 
-            # Decode a batch
-            indices = from_probabilities(
-                observation=observation,
-                batch_frames=batch_frames,
-                transition=transition,
-                initial=initial,
-                log_probs=log_probs,
-                gpu=gpu)
+        # Get output filenames
+        filenames = [output_files[file] for file in input_filenames]
 
-            # Get output filenames
-            filenames = [output_files[file] for file in input_filenames]
+        # Save
+        if torbi.MIN_CHUNK_SIZE is not None:
+
+            # Combine chunks
+            indices = torbi.data.separate(
+                indices=indices,
+                batch_chunks=batch_chunks,
+                batch_frames=batch_frames)
 
             # Save
-            if torbi.MIN_CHUNK_SIZE is not None:
-                indices = torbi.data.separate(
-                    indices=indices,
-                    batch_chunks=batch_chunks,
-                    batch_frames=batch_frames)
-                for indices, filename in zip(indices, filenames):
-                    save(indices.cpu().detach(), filename)
-            else:
-                for indices, filename, frames in zip(
-                    indices.cpu().detach(),
-                    filenames,
-                    batch_frames.cpu()
-                ):
-                    save_masked(indices, filename, frames)
+            for indices, filename in zip(indices, filenames):
+                save(indices.cpu().detach(), filename)
+        else:
 
-            # Increment by batch size
-            progress.update(len(input_filenames))
+            # Save
+            for indices, filename, frames in zip(
+                indices.cpu().detach(),
+                filenames,
+                batch_frames.cpu()
+            ):
+                save_masked(indices, filename, frames)
 
-    finally:
+        # Increment by batch size
+        progress.update(len(input_filenames))
 
-        # Close progress bar
-        progress.close()
+    # Close progress bar
+    progress.close()
 
 
 def save(tensor, file):

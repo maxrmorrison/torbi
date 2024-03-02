@@ -12,12 +12,12 @@ void viterbi_make_trellis_cuda(
     torch::Tensor transition,
     torch::Tensor initial,
     torch::Tensor posterior,
-    torch::Tensor memory
+    torch::Tensor trellis
 );
 
 void viterbi_backtrace_trellis_cuda(
     int *indices,
-    int *memory,
+    int *trellis,
     int *batch_frames,
     int batch_size,
     int max_frames,
@@ -32,21 +32,21 @@ void viterbi_backtrace_trellis_cuda(
 
 
 // Create trellis by working forward to determine most likely next states.
-// The resulting graph is stored in the memory_tensor, and the final posterior
+// The resulting graph is stored in the trellis_tensor, and the final posterior
 // distribution is stored in posterior_tensor.
 // observation_tensor: BATCH x FRAMES x STATES
 // batch_frames_tensor: BATCH
 // transition_tensor: STATES x STATES
 // initial_tensor: STATES
 // posterior_tensor: BATCH x STATES
-// memory_tensor: BATCH x FRAMES x STATES
+// trellis_tensor: BATCH x FRAMES x STATES
 void viterbi_make_trellis_cpu(
     torch::Tensor observation_tensor,
     torch::Tensor batch_frames_tensor,
     torch::Tensor transition_tensor,
     torch::Tensor initial_tensor,
     torch::Tensor posterior_tensor,
-    torch::Tensor memory_tensor
+    torch::Tensor trellis_tensor
 ) {
     int batch_size = observation_tensor.size(0);
     int max_frames = observation_tensor.size(1);
@@ -56,7 +56,7 @@ void viterbi_make_trellis_cpu(
     float *transition = transition_tensor.data_ptr<float>();
     float *initial = initial_tensor.data_ptr<float>();
     float *posterior_base = posterior_tensor.data_ptr<float>();
-    int *memory_base = memory_tensor.data_ptr<int>();
+    int *trellis_base = trellis_tensor.data_ptr<int>();
 
     int states2 = states*states;
 
@@ -66,7 +66,7 @@ void viterbi_make_trellis_cpu(
 
     int frames;
     float* observation;
-    int* memory;
+    int* trellis;
     float* posterior;
 
     float max_posterior;
@@ -75,7 +75,7 @@ void viterbi_make_trellis_cpu(
         frames = batch_frames[b];
         observation = observation_base + b*max_frames*states;
         posterior = posterior_base + b*states;
-        memory = memory_base + b*max_frames*states;
+        trellis = trellis_base + b*max_frames*states;
 
         #pragma omp parallel for schedule(static)
         for (int i=0; i<states; i++) {
@@ -98,7 +98,7 @@ void viterbi_make_trellis_cpu(
                 for (int s3=1; s3<states; s3++) {
                     if (probability[j*states+s3] > max_posterior) {
                         max_posterior = probability[j*states+s3];
-                        memory[t*states+j] = s3;
+                        trellis[t*states+j] = s3;
                     }
                 }
                 posterior_next[j] = observation[t*states+j] + max_posterior;
@@ -122,12 +122,12 @@ void viterbi_make_trellis_cpu(
 
 // Trace back through the trellis to find sequence with maximal
 // probability.
-// indices, memory, and batch frames are all data pointers
-// to the batch_frames tensor and the indices and memory tensors
+// indices, trellis, and batch frames are all data pointers
+// to the batch_frames tensor and the indices and trellis tensors
 // created by the viterbi_make_trellis_kernel (see above).
 void viterbi_backtrace_trellis_cpu(
     int *indices,
-    int *memory,
+    int *trellis,
     int *batch_frames,
     int batch_size,
     int max_frames,
@@ -136,11 +136,11 @@ void viterbi_backtrace_trellis_cpu(
     #pragma omp parallel for
     for (int b=0; b<batch_size; b++) {
         int *indices_b = indices + max_frames * b;
-        int *memory_b = memory + max_frames * states * b;
+        int *trellis_b = trellis + max_frames * states * b;
         int frames = batch_frames[b];
         int index = indices_b[frames-1];
         for (int t=frames-1; t>=1; t--) {
-            index = memory_b[t*states + index];
+            index = trellis_b[t*states + index];
             indices_b[t-1] = index;
         }
     }
@@ -185,8 +185,8 @@ torch::Tensor viterbi_decode(
     int max_frames = observation.size(1);
     int states = observation.size(2);
 
-    // define output torch::Tensors memory and posterior
-    torch::Tensor memory = torch::zeros(
+    // define output torch::Tensors trellis and posterior
+    torch::Tensor trellis = torch::zeros(
         {batch_size, max_frames, states},
         torch::dtype(torch::kInt32).device(device)
     );
@@ -206,7 +206,7 @@ torch::Tensor viterbi_decode(
             transition,
             initial,
             posterior,
-            memory
+            trellis
         );
     } else {
         omp_set_num_threads(num_threads);
@@ -216,7 +216,7 @@ torch::Tensor viterbi_decode(
             transition,
             initial,
             posterior,
-            memory
+            trellis
         );
     }
 
@@ -227,11 +227,11 @@ torch::Tensor viterbi_decode(
 
     if (device.is_cuda()) {
         CHECK_INPUT(indices);
-        CHECK_INPUT(memory);
+        CHECK_INPUT(trellis);
         CHECK_INPUT(batch_frames);
         viterbi_backtrace_trellis_cuda(
             indices.data_ptr<int>(),
-            memory.data_ptr<int>(),
+            trellis.data_ptr<int>(),
             batch_frames.data_ptr<int>(),
             batch_size,
             max_frames,
@@ -241,7 +241,7 @@ torch::Tensor viterbi_decode(
         omp_set_num_threads(num_threads);
         viterbi_backtrace_trellis_cpu(
             indices.data_ptr<int>(),
-            memory.data_ptr<int>(),
+            trellis.data_ptr<int>(),
             batch_frames.data_ptr<int>(),
             batch_size,
             max_frames,
