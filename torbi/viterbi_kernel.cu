@@ -23,12 +23,12 @@ Viterbi decoding CUDA kernels
 ///
 /// Args:
 ///   observation: :math:`(N, T, S)` or :math:`(T, S)`
-///     where `S = the number of states`, `T = the length of the sequence`,
+///     where `S = the number of states`,
+///     `T = the length of the sequence`,
 ///     and `N = batch size`.
 ///     Time-varying categorical distribution
 ///   batch_frames :math:`(N)`
 ///     Sequence length of each batch item
-///     shape=(batch,)
 ///   transition :math:`(S, S)`
 ///     Categorical transition matrix
 ///   initial :math:`(S)`
@@ -193,7 +193,8 @@ C++ API for accessing Viterbi decoding CUDA kernels
 ///
 /// Args:
 ///   observation: :math:`(N, T, S)` or :math:`(T, S)`
-///     where `S = the number of states`, `T = the length of the sequence`,
+///     where `S = the number of states`,
+///     `T = the length of the sequence`,
 ///     and `N = batch size`.
 ///     Time-varying categorical distribution
 ///   batch_frames :math:`(N)`
