@@ -295,16 +295,16 @@ Evaluates the accuracy and speed of decoding methods. `<gpu>` is the GPU index.
 ## Citation
 
 ### IEEE
-M. Morrison, C. Churchwell, N. Pruyne, and B. Pardo, "TODO," TODO, TODO 2024.
+M. Morrison, C. Churchwell, N. Pruyne, and B. Pardo, "Fine-Grained and Interpretable Neural Speech Editing," Interspeech, September 2024.
 
 
 ### BibTex
 
 ```
-@inproceedings{TODO,
-    title={TODO},
+@inproceedings{morrison2024fine,
+    title={Fine-Grained and Interpretable Neural Speech Editing},
     author={Morrison, Max and Churchwell, Cameron and Pruyne, Nathan and Pardo, Bryan},
-    booktitle={TODO},
-    month={TODO},
+    booktitle={Interspeech},
+    month={September},
     year={2024}
 }
