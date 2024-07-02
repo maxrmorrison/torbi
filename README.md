@@ -82,10 +82,19 @@ transition = torch.tensor([
 initial = torch.tensor([0.4, 0.35, 0.25])
 
 # Find optimal path using CPU compute
-torbi.from_probabilities(observation, transition, initial, log_probs=False)
+torbi.from_probabilities(
+   observation,
+   transition=transition,
+   initial=initial,
+   log_probs=False)
 
 # Find optimal path using GPU compute
-torbi.from_probabilities(observation, transition, initial, log_probs=False, gpu=0)
+torbi.from_probabilities(
+   observation,
+   transition=transition,
+   initial=initial,
+   log_probs=False,
+   gpu=0)
 ```
 
 
@@ -98,7 +107,8 @@ def from_probabilities(
     transition: Optional[torch.Tensor] = None,
     initial: Optional[torch.Tensor] = None,
     log_probs: bool = False,
-    gpu: Optional[int] = None
+    gpu: Optional[int] = None,
+    num_threads: Optional[int] = 1
 ) -> torch.Tensor:
     """Decode a time-varying categorical distribution
 
@@ -119,6 +129,8 @@ def from_probabilities(
             Whether inputs are in (natural) log space
         gpu
             GPU index to use for decoding. Defaults to CPU.
+        num_threads
+            The number of threads to use for parallelized decoding
 
     Returns
         indices
@@ -136,7 +148,8 @@ def from_file(
     transition_file: Optional[Union[str, os.PathLike]] = None,
     initial_file: Optional[Union[str, os.PathLike]] = None,
     log_probs: bool = False,
-    gpu: Optional[int] = None
+    gpu: Optional[int] = None,
+    num_threads: Optional[int] = 1
 ) -> torch.Tensor:
     """Decode a time-varying categorical distribution file
 
@@ -154,6 +167,8 @@ def from_file(
             Whether inputs are in (natural) log space
         gpu
             GPU index to use for decoding. Defaults to CPU.
+        num_threads
+            The number of threads to use for parallelized decoding
 
     Returns
         indices
@@ -172,7 +187,8 @@ def from_file_to_file(
     transition_file: Optional[Union[str, os.PathLike]] = None,
     initial_file: Optional[Union[str, os.PathLike]] = None,
     log_probs: bool = False,
-    gpu: Optional[int] = None
+    gpu: Optional[int] = None,
+    num_threads: Optional[int] = None
 ) -> None:
     """Decode a time-varying categorical distribution file and save
 
@@ -192,6 +208,8 @@ def from_file_to_file(
             Whether inputs are in (natural) log space
         gpu
             GPU index to use for decoding. Defaults to CPU.
+        num_threads
+            The number of threads to use for parallelized decoding
     """
 ```
 
@@ -205,7 +223,8 @@ def from_files_to_files(
     transition_file: Optional[Union[str, os.PathLike]] = None,
     initial_file: Optional[Union[str, os.PathLike]] = None,
     log_probs: bool = False,
-    gpu: Optional[int] = None
+    gpu: Optional[int] = None,
+    num_threads: Optional[int] = None
 ) -> None:
     """Decode time-varying categorical distribution files and save
 
@@ -225,6 +244,8 @@ def from_files_to_files(
             Whether inputs are in (natural) log space
         gpu
             GPU index to use for decoding. Defaults to CPU.
+        num_threads
+            The number of threads to use for parallelized decoding
     """
 ```
 
@@ -240,21 +261,27 @@ usage: python -m torbi
     [--initial_file INITIAL_FILE]
     [--log_probs]
     [--gpu GPU]
+    [--num_threads NUM_THREADS]
 
 arguments:
   --input_files INPUT_FILES [INPUT_FILES ...]
-                        Time-varying categorical distribution files
+    Time-varying categorical distribution files
   --output_files OUTPUT_FILES [OUTPUT_FILES ...]
-                        Files to save decoded indices
+    Files to save decoded indices
 
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help
+    show this help message and exit
   --transition_file TRANSITION_FILE
-                        Categorical transition matrix file; defaults to uniform
+    Categorical transition matrix file; defaults to uniform
   --initial_file INITIAL_FILE
-                        Categorical initial distribution file; defaults to uniform
-  --log_probs           Whether inputs are in (natural) log space
-  --gpu GPU             GPU index to use for decoding. Defaults to CPU.
+    Categorical initial distribution file; defaults to uniform
+  --log_probs
+    Whether inputs are in (natural) log space
+  --gpu GPU
+    GPU index to use for decoding. Defaults to CPU.
+  --num_threads NUM_THREADS
+    The number of threads to use for parellelized CPU decoding
 ```
 
 
