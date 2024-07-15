@@ -1,9 +1,9 @@
 [build-system]
 requires = [
-    "setuptools>=61.0",
+    "setuptools>=61.0,<70",
     "numpy",
     "pybind11",
-    "torch==1.13.1"
+    "torch==2.3.1"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -18,7 +18,7 @@ description = "Optimized Viterbi decoding and fast approximations"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "numpy", "torch==1.13.1", "torchutil", "yapecs"
+    "numpy", "torch==2.3.1", "torchutil", "yapecs"
 ]
 classifiers = [
     "License :: OSI Approved :: MIT License"

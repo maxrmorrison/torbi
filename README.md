@@ -42,14 +42,9 @@ Highly parallelizable Viterbi decoding for CPU or GPU compute. Below are time be
 
 ## Installation
 
-Dependencies:
-- [Intel OpenMP](https://www.intel.com/content/www/us/en/docs/dpcpp-cpp-compiler/developer-guide-reference/2023-1/use-the-openmp-libraries.html)
-- [CUDA toolkit](https://developer.nvidia.com/cuda-toolkit)
-- g++ 11
-
-To perform decoding, install `torbi` as follows.
-
 `pip install torbi`
+
+If you receive an error message regarding mismatched CUDA versions, change the torch version in `pyproject.toml` to your currently installed version of `torch`.
 
 To perform evaluation of the accuracy and speed of decoding methods, install `torbi` with the additional evaluation dependencies.
 
