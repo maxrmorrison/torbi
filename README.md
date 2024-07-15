@@ -42,7 +42,10 @@ Highly parallelizable Viterbi decoding for CPU or GPU compute. Below are time be
 
 ## Installation
 
-`pip install torbi`
+```bash
+git clone git@github.com:maxrmorrison/torbi
+pip install torbi/
+```
 
 If you receive an error message regarding mismatched CUDA versions, change the torch version in `pyproject.toml` to your currently installed version of `torch`.
 
