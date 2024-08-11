@@ -2,10 +2,15 @@ import os
 from setuptools import find_packages, setup
 import numpy as np
 from torch.utils.cpp_extension import BuildExtension, CppExtension
+import platform
 
-use_cuda = os.environ.get('TORBI_USE_CUDA', 1)
+windows = platform.system() == "Windows"
 
-if use_cuda == 1:
+use_cuda = bool(int(os.environ.get('TORBI_USE_CUDA', 1)))
+
+cxx_args = ['-fopenmp', '-O3'] if not windows else ['/O2', '/openmp']
+
+if use_cuda:
     from torch.utils.cpp_extension import CUDAExtension
     os.environ['CXX'] = 'g++-11'
     os.environ['CC'] = 'gcc-11'
@@ -17,7 +22,7 @@ if use_cuda == 1:
                 'torbi/viterbi_kernel.cu'
             ],
             # extra_compile_args={'cxx': [], 'nvcc': ['-keep', '-G', '-O3', '--source-in-ptx']}
-            extra_compile_args={'cxx': ['-fopenmp', '-O3'], 'nvcc': ['-O3']}
+            extra_compile_args={'cxx': cxx_args, 'nvcc': ['-O3', '-allow-unsupported-compiler']}
         )
     ]
 else:
@@ -27,10 +32,9 @@ else:
             [
                 'torbi/viterbi_cpu.cpp'
             ],
-            extra_compile_args={'cxx': ['-fopenmp', '-O3']}
+            extra_compile_args={'cxx': cxx_args}
         )
     ]
-
 
 setup(
     ext_modules=modules,

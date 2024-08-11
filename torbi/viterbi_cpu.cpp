@@ -70,14 +70,16 @@ void viterbi_make_trellis_cpu(
 
         for (int t=1; t<frames; t++) {
 
-            #pragma omp parallel for simd schedule(static)
+            //TODO check simd for this?
+            #pragma omp parallel for schedule(static)
             for (int i=0; i<states2; i++) {
                 int s1 = i % states;
                 probability[i] = posterior_current[s1] + transition_ptr[i];
             }
 
             // Get optimal
-            #pragma omp parallel for simd schedule(static) private(max_posterior)
+            //TODO check simd for this?
+            #pragma omp parallel for schedule(static) private(max_posterior)
             for (int j=0; j<states; j++) {
                 max_posterior = probability[j*states];
 

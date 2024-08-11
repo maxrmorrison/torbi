@@ -17,94 +17,94 @@ from viterbi import decode
 ###############################################################################
 
 
-def from_dataloader(
-    dataloader: torch.utils.data.DataLoader,
-    output_files: Dict[
-        Union[str, bytes, os.PathLike],
-        Union[str, bytes, os.PathLike]],
-    transition: Optional[torch.Tensor] = None,
-    initial: Optional[torch.Tensor] = None,
-    log_probs: bool = False,
-    save_workers: int = 0,
-    gpu: Optional[int] = None,
-    num_threads: Optional[int] = None
-) -> None:
-    """Decode time-varying categorical distributions from dataloader
+# def from_dataloader(
+#     dataloader: torch.utils.data.DataLoader,
+#     output_files: Dict[
+#         Union[str, bytes, os.PathLike],
+#         Union[str, bytes, os.PathLike]],
+#     transition: Optional[torch.Tensor] = None,
+#     initial: Optional[torch.Tensor] = None,
+#     log_probs: bool = False,
+#     save_workers: int = 0,
+#     gpu: Optional[int] = None,
+#     num_threads: Optional[int] = None
+# ) -> None:
+#     """Decode time-varying categorical distributions from dataloader
 
-    Arguments
-        dataloader
-            torbi DataLoader for asynchronous loading and preprocessing
-        output_files
-            A dictionary mapping input filenames to output filenames
-        transition
-            Categorical transition matrix; defaults to uniform
-            shape=(states, states)
-        initial
-            Categorical initial distribution; defaults to uniform
-            shape=(states,)
-        log_probs
-            Whether inputs are in (natural) log space
-        save_workers
-            The number of worker threads to use for async file saving
-        gpu
-            The index of the GPU to use for inference
-        num_threads
-            The number of threads to use for parallelized decoding
+#     Arguments
+#         dataloader
+#             torbi DataLoader for asynchronous loading and preprocessing
+#         output_files
+#             A dictionary mapping input filenames to output filenames
+#         transition
+#             Categorical transition matrix; defaults to uniform
+#             shape=(states, states)
+#         initial
+#             Categorical initial distribution; defaults to uniform
+#             shape=(states,)
+#         log_probs
+#             Whether inputs are in (natural) log space
+#         save_workers
+#             The number of worker threads to use for async file saving
+#         gpu
+#             The index of the GPU to use for inference
+#         num_threads
+#             The number of threads to use for parallelized decoding
 
-    Returns
-        indices
-            The decoded bin indices
-            shape=(batch, frames)
-    """
-    # Setup progress bar
-    progress = torchutil.iterator(
-        range(0, len(dataloader.dataset)),
-        torbi.CONFIG,
-        total=len(dataloader.dataset))
+#     Returns
+#         indices
+#             The decoded bin indices
+#             shape=(batch, frames)
+#     """
+#     # Setup progress bar
+#     progress = torchutil.iterator(
+#         range(0, len(dataloader.dataset)),
+#         torbi.CONFIG,
+#         total=len(dataloader.dataset))
 
-    # Iterate over dataset
-    for observation, batch_frames, batch_chunks, input_filenames in dataloader:
+#     # Iterate over dataset
+#     for observation, batch_frames, batch_chunks, input_filenames in dataloader:
 
-        # Decode
-        indices = from_probabilities(
-            observation=observation,
-            batch_frames=batch_frames,
-            transition=transition,
-            initial=initial,
-            log_probs=log_probs,
-            gpu=gpu,
-            num_threads=num_threads)
+#         # Decode
+#         indices = from_probabilities(
+#             observation=observation,
+#             batch_frames=batch_frames,
+#             transition=transition,
+#             initial=initial,
+#             log_probs=log_probs,
+#             gpu=gpu,
+#             num_threads=num_threads)
 
-        # Get output filenames
-        filenames = [output_files[file] for file in input_filenames]
+#         # Get output filenames
+#         filenames = [output_files[file] for file in input_filenames]
 
-        if torbi.USE_CHUNKING:
+#         if torbi.USE_CHUNKING:
 
-            # Combine chunks
-            indices = torbi.data.separate(
-                indices=indices,
-                batch_chunks=batch_chunks,
-                batch_frames=batch_frames)
+#             # Combine chunks
+#             indices = torbi.data.separate(
+#                 indices=indices,
+#                 batch_chunks=batch_chunks,
+#                 batch_frames=batch_frames)
 
-            # Save
-            for indices, filename in zip(indices, filenames):
-                save(indices.cpu().detach(), filename)
+#             # Save
+#             for indices, filename in zip(indices, filenames):
+#                 save(indices.cpu().detach(), filename)
 
-        else:
+#         else:
 
-            # Save
-            for indices, filename, frames in zip(
-                indices.cpu().detach(),
-                filenames,
-                batch_frames.cpu()
-            ):
-                save_masked(indices, filename, frames)
+#             # Save
+#             for indices, filename, frames in zip(
+#                 indices.cpu().detach(),
+#                 filenames,
+#                 batch_frames.cpu()
+#             ):
+#                 save_masked(indices, filename, frames)
 
-        # Increment by batch size
-        progress.update(len(input_filenames))
+#         # Increment by batch size
+#         progress.update(len(input_filenames))
 
-    # Close progress bar
-    progress.close()
+#     # Close progress bar
+#     progress.close()
 
 
 def from_probabilities(
@@ -361,8 +361,7 @@ def from_files_to_files(
         transition=transition,
         initial=initial,
         log_probs=log_probs,
-        gpu=gpu,
-        num_threads=num_threads)
+        gpu=gpu)
 
 
 ###############################################################################
