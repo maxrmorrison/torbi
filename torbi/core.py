@@ -361,7 +361,8 @@ def from_files_to_files(
         transition=transition,
         initial=initial,
         log_probs=log_probs,
-        gpu=gpu)
+        gpu=gpu,
+        num_threads=num_threads)
 
 
 ###############################################################################
@@ -377,7 +378,8 @@ def from_dataloader(
     transition: Optional[torch.Tensor] = None,
     initial: Optional[torch.Tensor] = None,
     log_probs: bool = False,
-    gpu: Optional[int] = None
+    gpu: Optional[int] = None,
+    num_threads: Optional[int] = 1
 ) -> None:
     """Decode time-varying categorical distributions from dataloader
 
@@ -423,7 +425,8 @@ def from_dataloader(
             transition=transition,
             initial=initial,
             log_probs=log_probs,
-            gpu=gpu)
+            gpu=gpu,
+            num_threads=num_threads)
 
         # Get output filenames
         filenames = [output_files[file] for file in input_filenames]
