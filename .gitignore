@@ -6,6 +6,7 @@ __pycache__/
 *.so
 build/
 dist/
+*.pyd
 
 data/cache/*
 !data/cache/.gitkeep
