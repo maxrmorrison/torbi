@@ -5,10 +5,17 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension
 import platform
 
 windows = platform.system() == "Windows"
+macos = platform.system() == "Darwin"
+
 
 use_cuda = bool(int(os.environ.get('TORBI_USE_CUDA', 1)))
 
-cxx_args = ['-fopenmp', '-O3'] if not windows else ['/O2', '/openmp']
+if windows:
+    cxx_args = ['/O2', '/openmp']
+elif macos:
+    cxx_args = ['-O3', '-Xclang', '-fopenmp', '-L/opt/homebrew/opt/libomp/lib', '-I/opt/homebrew/opt/libomp/include', '-lomp']
+else:
+    cxx_args = ['-fopenmp', '-O3']
 
 if use_cuda:
     from torch.utils.cpp_extension import CUDAExtension
