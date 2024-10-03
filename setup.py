@@ -3,12 +3,20 @@ from setuptools import find_packages, setup
 import numpy as np
 from torch.utils.cpp_extension import BuildExtension, CppExtension
 import platform
+from pathlib import Path
 
 windows = platform.system() == "Windows"
 macos = platform.system() == "Darwin"
 
+if macos:
+    use_cuda = False # No cuda drivers anyway
 
-use_cuda = bool(int(os.environ.get('TORBI_USE_CUDA', 1)))
+    #also check for homebrew libomp
+    libomp_dir = Path('/opt/homebrew/opt/libomp/')
+    if not libomp_dir.exists():
+        raise FileNotFoundError("On MacOS, you must install libomp through homebrew (brew install libomp)")
+else:
+    use_cuda = bool(int(os.environ.get('TORBI_USE_CUDA', 1)))
 
 if windows:
     cxx_args = ['/O2', '/openmp']
