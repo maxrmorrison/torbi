@@ -34,6 +34,8 @@ Issues = "https://github.com/maxrmorrison/torbi/issues"
 evaluate = [
     "librosa",
     "torchaudio",
+    "pytest",
+    "penn"
 ]
 
 [tool.setuptools.package-data]
