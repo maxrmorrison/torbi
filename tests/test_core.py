@@ -43,5 +43,4 @@ def test_cuda():
         initial=initial,
         log_probs=False,
         gpu=0)
-    import pdb; pdb.set_trace()
     assert (bins == torch.tensor([1, 2, 2]).to('cuda:0')).all()
