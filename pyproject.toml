@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "torbi"
-version = "0.0.1"
+version = "0.1.0"
 authors = [
   { name="Cameron Churchwell", email="cameronchurchwell2024@u.northwestern.edu" },
   { name="Max Morrison", email="maxrmorrison@gmail.com" },
