@@ -6,7 +6,8 @@ def decode(
     observation: torch.Tensor,
     batch_frames: torch.Tensor,
     transition: torch.Tensor,
-    initial: torch.Tensor
+    initial: torch.Tensor,
+    num_threads: int = 0,
 ) -> torch.Tensor:
     """Decode a time-varying categorical distribution
 
@@ -47,3 +48,6 @@ def decode(
             >>>     transition,
             >>>     initial)
     """
+    if observation.device.type == 'cpu':
+        torch.set_num_threads(num_threads)
+    return torch.ops.torbi.viterbi_decode(observation, batch_frames, transition, initial)

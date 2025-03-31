@@ -9,7 +9,7 @@ import torch
 import torchutil
 
 import torbi
-from viterbi import decode
+from torbi import decode
 
 
 ###############################################################################
@@ -200,7 +200,7 @@ def from_probabilities(
             batch_frames,
             transition,
             initial,
-            num_threads)
+            num_threads=num_threads)
 
     return indices
 

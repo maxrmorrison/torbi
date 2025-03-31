@@ -21,7 +21,9 @@ from .config.static import *
 # Module imports
 ###############################################################################
 
-
+import torch
+from . import _C
+from .viterbi import decode
 from .core import *
 from .chunk import chunk
 from . import data
