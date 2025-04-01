@@ -1,10 +1,8 @@
-#include <torch/extension.h>
-
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <torch/extension.h>
 
-#include <chrono>
-
+// #include <chrono>
 #include <vector>
 
 #define NUM_THREADS 1024
@@ -13,11 +11,11 @@
 
 #define FULL_MASK 0xffffffff
 
+namespace torbi {
 
 /******************************************************************************
 Viterbi decoding CUDA kernels
 ******************************************************************************/
-
 
 /// CUDA kernel for first step of Viterbi decoding: making the trellis matrix
 ///
@@ -52,18 +50,17 @@ Viterbi decoding CUDA kernels
 ///   operations to find current next best state from the starting state (the
 ///   state the warp is assigned to).
 __global__ void viterbi_make_trellis_kernel(
-    float* __restrict__ observation,
-    int* __restrict__ batch_frames,
-    float* __restrict__ transition,
-    float* __restrict__ initial,
-    float* __restrict__ posterior,
-    int* __restrict__ trellis,
+    float *__restrict__ observation,
+    int *__restrict__ batch_frames,
+    float *__restrict__ transition,
+    float *__restrict__ initial,
+    float *__restrict__ posterior,
+    int *__restrict__ trellis,
     int max_frames,
-    int states
-) {
+    int states) {
     // Handle batch
     int batch_id = blockIdx.x;
-    int frames = batch_frames[batch_id]; // Get number of frames for this batch item
+    int frames = batch_frames[batch_id];  // Get number of frames for this batch item
     observation += batch_id * max_frames * states;
     posterior += batch_id * states;
     trellis += batch_id * max_frames * states;
@@ -76,30 +73,30 @@ __global__ void viterbi_make_trellis_kernel(
     extern __shared__ float posterior_cache[];
 
     float *posterior_current = posterior_cache;
-    float *posterior_next = posterior_cache+states;
+    float *posterior_next = posterior_cache + states;
 
     // Set initial
-    for (int i=threadIdx.x; i<states; i+=NUM_THREADS) {
+    for (int i = threadIdx.x; i < states; i += NUM_THREADS) {
         posterior_current[i] = observation[i] + initial[i];
     }
     __syncthreads();
 
-    for (int t=1; t<frames; t++) {
+    for (int t = 1; t < frames; t++) {
         // Get optimal
         // Iterate rows by warp (each warp gets assigned a row)
         int max_index;
         float max_value;
-        for (int j=warp_id; j<states; j+=NUM_WARPS) {
+        for (int j = warp_id; j < states; j += NUM_WARPS) {
             // Indices start out as just 0-WARP_SIZE for the first WARP_SIZE elements in the array
             max_index = thread_warp_id;
             // Values start as the first WARP_SIZE elements in the row, with row selected by j
-            max_value = posterior_current[thread_warp_id] + transition[j*states+thread_warp_id];
+            max_value = posterior_current[thread_warp_id] + transition[j * states + thread_warp_id];
 
             // Slide the warp over the row in a linear argmax search (parallelized by threads within the warp)
             // Note that we start here offset by the WARP_SIZE since we already initialized using the first chunk
-            for (int i=thread_warp_id+WARP_SIZE; i<states; i+=WARP_SIZE) {
+            for (int i = thread_warp_id + WARP_SIZE; i < states; i += WARP_SIZE) {
                 // Get the new value from the current row at the current offset
-                float new_value = posterior_current[i] + transition[j*states + i];
+                float new_value = posterior_current[i] + transition[j * states + i];
                 if (new_value > max_value) {
                     max_index = i;
                     max_value = new_value;
@@ -108,7 +105,7 @@ __global__ void viterbi_make_trellis_kernel(
             __syncwarp();
 
             // Parallel reduction
-            for (int offset=WARP_SIZE/2; offset>0; offset/=2) {
+            for (int offset = WARP_SIZE / 2; offset > 0; offset /= 2) {
                 float new_value = __shfl_down_sync(FULL_MASK, max_value, offset);
                 int new_index = __shfl_down_sync(FULL_MASK, max_index, offset);
                 if (new_value > max_value) {
@@ -117,8 +114,8 @@ __global__ void viterbi_make_trellis_kernel(
                 }
             }
             if (thread_warp_id == 0) {
-                trellis[(t)*states+j] = max_index;
-                posterior_next[j] = observation[t*states+j] + max_value;
+                trellis[(t)*states + j] = max_index;
+                posterior_next[j] = observation[t * states + j] + max_value;
             }
         }
         float *posterior_last = posterior_current;
@@ -128,12 +125,11 @@ __global__ void viterbi_make_trellis_kernel(
     }
 
     // Write final posterior row
-    for (int i=threadIdx.x; i<states; i+=NUM_THREADS) {
+    for (int i = threadIdx.x; i < states; i += NUM_THREADS) {
         posterior[i] = posterior_current[i];
     }
     __syncthreads();
 }
-
 
 /// CUDA kernel for second step of Viterbi decoding: backtracing the trellis
 /// to find the maximum likelihood path
@@ -159,12 +155,10 @@ __global__ void viterbi_backtrace_trellis_kernel(
     int *batch_frames,
     int batch_size,
     int max_frames,
-    int states
-) {
+    int states) {
     int global_thread_id = blockIdx.x * NUM_THREADS + threadIdx.x;
     int b = global_thread_id;
     if (b < batch_size) {
-
         // Get location to store maximum likelihood path
         int *indices_b = indices + max_frames * b;
 
@@ -175,19 +169,17 @@ __global__ void viterbi_backtrace_trellis_kernel(
         int frames = batch_frames[b];
 
         // Backtrace
-        int index = indices_b[frames-1];
-        for (int t=frames-1; t>=1; t--) {
-            index = trellis_b[t*states + index];
-            indices_b[t-1] = index;
+        int index = indices_b[frames - 1];
+        for (int t = frames - 1; t >= 1; t--) {
+            index = trellis_b[t * states + index];
+            indices_b[t - 1] = index;
         }
     }
 }
 
-
 /******************************************************************************
 C++ API for accessing Viterbi decoding CUDA kernels
 ******************************************************************************/
-
 
 /// C++ API for first step of Viterbi decoding: making the trellis matrix
 ///
@@ -211,13 +203,12 @@ C++ API for accessing Viterbi decoding CUDA kernels
 ///   trellis: :math:`(N, T, S)`
 ///     Matrix of minimum path indices for backtracing
 void viterbi_make_trellis_cuda(
-    torch::Tensor observation,
-    torch::Tensor batch_frames,
-    torch::Tensor transition,
-    torch::Tensor initial,
-    torch::Tensor posterior,
-    torch::Tensor trellis
-) {
+    const at::Tensor observation,
+    const at::Tensor batch_frames,
+    const at::Tensor transition,
+    const at::Tensor initial,
+    at::Tensor posterior,
+    at::Tensor trellis) {
     const int threads = NUM_THREADS;
     int batch_size = observation.size(0);
     int max_frames = observation.size(1);
@@ -225,7 +216,7 @@ void viterbi_make_trellis_cuda(
     const dim3 blocks(batch_size);
     int device_num = observation.device().index();
     cudaSetDevice(device_num);
-    viterbi_make_trellis_kernel<<<blocks, threads, 2*states*sizeof(float)>>>(
+    viterbi_make_trellis_kernel<<<blocks, threads, 2 * states * sizeof(float)>>>(
         observation.data_ptr<float>(),
         batch_frames.data_ptr<int>(),
         transition.data_ptr<float>(),
@@ -235,7 +226,6 @@ void viterbi_make_trellis_cuda(
         max_frames,
         states);
 }
-
 
 /// C++ API for second step of Viterbi decoding: backtracing the trellis
 /// to find the maximum likelihood path
@@ -261,8 +251,7 @@ void viterbi_backtrace_trellis_cuda(
     int *batch_frames,
     int batch_size,
     int max_frames,
-    int states
-) {
+    int states) {
     const int threads = NUM_THREADS;
     int num_blocks = (batch_size + NUM_THREADS) / NUM_THREADS;
     const dim3 blocks(num_blocks);
@@ -274,3 +263,85 @@ void viterbi_backtrace_trellis_cuda(
         max_frames,
         states);
 }
+
+/// Decode time-varying categorical distributions using Viterbi decoding
+///
+/// Args:
+///     observation: :math:`(N, T, S)` or :math:`(T, S)`
+///         where `S = the number of states`, 
+///         `T = the length of the sequence`,
+///         and `N = batch size`.
+///         Time-varying categorical distribution
+///     batch_frames :math:`(N)`
+///         Sequence length of each batch item
+///     transition :math:`(S, S)`
+///         Categorical transition matrix
+///     initial :math:`(S)`
+///         Categorical initial distribution
+///     num_threads (int, optional)
+///         Number of threads to use if doing CPU decoding
+///
+/// Return:
+///     indices: :math:`(N, T)`
+///         The decoded bin indices
+at::Tensor viterbi_decode_cuda(
+    at::Tensor observation,
+    at::Tensor batch_frames,
+    at::Tensor transition,
+    at::Tensor initial
+) {
+    TORCH_INTERNAL_ASSERT(observation.device().type() == at::DeviceType::CUDA);
+    TORCH_INTERNAL_ASSERT(batch_frames.device().type() == at::DeviceType::CUDA);
+    TORCH_INTERNAL_ASSERT(transition.device().type() == at::DeviceType::CUDA);
+    TORCH_INTERNAL_ASSERT(initial.device().type() == at::DeviceType::CUDA);
+    int batch_size = observation.size(0);
+    int max_frames = observation.size(1);
+    int states = observation.size(2);
+
+    auto device = observation.device();
+
+    at::Tensor observation_contig = observation.contiguous();
+    at::Tensor batch_frames_contig = batch_frames.contiguous();
+    at::Tensor transition_contig = transition.contiguous();
+    at::Tensor initial_contig = initial.contiguous();
+
+    // Intermediate storage for path indices and costs
+    at::Tensor trellis = torch::zeros(
+        {batch_size, max_frames, states},
+        torch::dtype(torch::kInt32).device(device));
+    at::Tensor posterior = torch::zeros(
+        {batch_size, states},
+        torch::dtype(torch::kFloat32).device(device));
+
+    // First step: make the minimum cost path trellis
+    viterbi_make_trellis_cuda(
+        observation_contig,
+        batch_frames_contig,
+        transition_contig,
+        initial_contig,
+        posterior,
+        trellis);
+
+    at::Tensor indices = posterior.argmax(1);
+    indices = indices.unsqueeze(1);
+    indices = indices.repeat({1, max_frames});
+    indices = indices.to(torch::kInt32);
+
+    // Second step: backtrace trellis to find maximum likelihood path
+    viterbi_backtrace_trellis_cuda(
+        indices.data_ptr<int>(),
+        trellis.data_ptr<int>(),
+        batch_frames_contig.data_ptr<int>(),
+        batch_size,
+        max_frames,
+        states);
+
+    return indices;
+}
+
+// Registers CUDA implementation(s)
+TORCH_LIBRARY_IMPL(torbi, CUDA, m) {
+    m.impl("viterbi_decode", &viterbi_decode_cuda);
+}
+
+}  // namespace torbi
