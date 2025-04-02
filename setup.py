@@ -48,9 +48,9 @@ def get_extensions():
         cxx_args = [
             '-Xclang',
             '-fopenmp',
-            '-L/opt/homebrew/opt/libomp/lib',
-            '-I/opt/homebrew/opt/libomp/include',
-            '-lomp'
+            # '-L/opt/homebrew/opt/libomp/lib',
+            # '-I/opt/homebrew/opt/libomp/include',
+            # '-lomp',
             "-O3" if not debug_mode else "-O0",
             "-fdiagnostics-color=always",
             "-DPy_LIMITED_API=0x03090000",  # min CPython version 3.9
