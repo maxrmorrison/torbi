@@ -15,11 +15,6 @@ import warnings
 
 library_name = "torbi"
 
-if torch.__version__ >= "2.6.0":
-    py_limited_api = True
-else:
-    py_limited_api = False
-
 def get_extensions():
     debug_mode = os.getenv("DEBUG", "0") == "1"
     use_cuda = os.getenv("USE_CUDA", "1") == "1"
@@ -40,7 +35,6 @@ def get_extensions():
         cxx_args = [
             "/O2" if not debug_mode else "/Od",
             ['/O2', '/openmp']
-            # "-DPy_LIMITED_API=0x03090000",  # min CPython version 3.9
         ]
         if debug_mode:
             raise ValueError('debug_mode not currently supported on windows')
@@ -53,14 +47,12 @@ def get_extensions():
             # '-lomp',
             "-O3" if not debug_mode else "-O0",
             "-fdiagnostics-color=always",
-            "-DPy_LIMITED_API=0x03090000",  # min CPython version 3.9
         ]
     else: # linux
         cxx_args = [
             "-O3" if not debug_mode else "-O0",
             "-fdiagnostics-color=always",
             "-fopenmp",
-            "-DPy_LIMITED_API=0x03090000",  # min CPython version 3.9
         ]
 
     extra_link_args = []
@@ -91,7 +83,7 @@ def get_extensions():
             sources,
             extra_compile_args=extra_compile_args,
             extra_link_args=extra_link_args,
-            py_limited_api=py_limited_api,
+            is_python_module=False,
         )
     ]
 
@@ -102,5 +94,5 @@ setup(
     cmdclass={'build_ext': BuildExtension},
     include_dirs=[np.get_include(), 'torbi'],
     packages=find_packages(),
-    options={"bdist_wheel": {"py_limited_api": "cp39"}} if py_limited_api else {},
+    options={},
 )

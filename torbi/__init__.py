@@ -22,7 +22,15 @@ from .config.static import *
 ###############################################################################
 
 import torch
-from . import _C
+# load the library .so
+# taken from https://docs.pytorch.org/tutorials/advanced/cpp_custom_ops.html
+from pathlib import Path
+so_files = list(Path(__file__).parent.glob("_C*.so"))
+assert (
+    len(so_files) == 1
+), f"Expected one _C*.so file, found {len(so_files)}"
+torch.ops.load_library(so_files[0])
+
 from .viterbi import decode
 from .core import *
 from .chunk import chunk

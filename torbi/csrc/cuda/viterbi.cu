@@ -1,6 +1,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <torch/extension.h>
+#include <torch/library.h>
+#include <ATen/ATen.h>
 
 // #include <chrono>
 #include <vector>
@@ -306,12 +307,12 @@ at::Tensor viterbi_decode_cuda(
     at::Tensor initial_contig = initial.contiguous();
 
     // Intermediate storage for path indices and costs
-    at::Tensor trellis = torch::zeros(
+    at::Tensor trellis = at::zeros(
         {batch_size, max_frames, states},
-        torch::dtype(torch::kInt32).device(device));
-    at::Tensor posterior = torch::zeros(
+        at::dtype(at::kInt).device(device));
+    at::Tensor posterior = at::zeros(
         {batch_size, states},
-        torch::dtype(torch::kFloat32).device(device));
+        at::dtype(at::kFloat).device(device));
 
     // First step: make the minimum cost path trellis
     viterbi_make_trellis_cuda(
@@ -325,7 +326,7 @@ at::Tensor viterbi_decode_cuda(
     at::Tensor indices = posterior.argmax(1);
     indices = indices.unsqueeze(1);
     indices = indices.repeat({1, max_frames});
-    indices = indices.to(torch::kInt32);
+    indices = indices.to(at::kInt);
 
     // Second step: backtrace trellis to find maximum likelihood path
     viterbi_backtrace_trellis_cuda(
