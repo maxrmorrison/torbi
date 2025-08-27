@@ -87,7 +87,7 @@ jobs:
       - name: Set version
         if: ${{ runner.os != 'macOS' }}
         run: |
-          VERSION=`sed -n "s/^version = '\(.*\)'/\1/p" pyproject.toml`
+          VERSION=`sed -n 's/^version = "\([0-9.]*\)".*/\1/p' pyproject.toml`
           TORCH_VERSION=`echo "pt${{ matrix.torch-version }}" | sed "s/..$//" | sed "s/\.//g"`
           CUDA_VERSION=`echo ${{ matrix.cuda-version }}`
           echo "New version name: $VERSION+$TORCH_VERSION$CUDA_VERSION"
