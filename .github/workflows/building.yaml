@@ -18,7 +18,7 @@ jobs:
         python-version: ['3.12']
         torch-version: [2.8.0]
         # cuda-version: ['cpu', 'cu118', 'cu124', 'cu126', 'cu128', 'cu129']
-        cuda-version: ['cpu']
+        cuda-version: ['cpu', 'cu129']
         # exclude:
         #   - torch-version: 2.6.0
         #     cuda-version: 'cu128'
@@ -66,9 +66,20 @@ jobs:
         uses: jlumbroso/free-disk-space@main
 
       - name: Install CUDA ${{ matrix.cuda-version }}
-        if: ${{ matrix.cuda-version != 'cpu' }}
+        if: ${{ matrix.cuda-version != 'cpu' }} && ${{ runner.os == 'Linux' }}
         run: |
-          bash .github/workflows/cuda/${{ matrix.cuda-version }}-${{ runner.os }}.sh
+          ver=${CUDA_VERSION_STRING#cu}
+          major=${ver:0:2}
+          minor=${ver:2:1}
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.1-1_all.deb
+          dpkg -i cuda-keyring_1.1-1_all.deb
+          apt-get update
+          apt-get install -y "cuda-toolkit-$major-$minor"
+          apt-get clean
+          echo "CUDA_HOME=/usr/local/cuda-$major.$minor" >> $GITHUB_ENV
+          echo "PATH=/usr/local/cuda-$major.$minor/bin:\$PATH" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/local/cuda-$major.$minor/lib64:\$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo $GITHUB_ENV
 
       - name: Install PyTorch ${{ matrix.torch-version }}+${{ matrix.cuda-version }}
         run: |
@@ -114,13 +125,10 @@ jobs:
       #   shell:
       #     bash
 
-      # - name: Configure AWS
-      #   uses: aws-actions/configure-aws-credentials@v1
-      #   with:
-      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #     aws-region: us-west-1
-
-      # - name: Upload wheel
-      #   run: |
-      #     aws s3 sync dist s3://data.pyg.org/whl/torch-${{ matrix.torch-version }}+${{ matrix.cuda-version }} --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers
+      - name: Upload wheels as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.python-version }}-${{ matrix.torch-version }}-${{ matrix.cuda-version }}
+          path: dist/*.whl
+          if-no-files-found: error
+          retention-days: 14
