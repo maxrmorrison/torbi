@@ -43,7 +43,8 @@ void viterbi_make_trellis_mps(
     const torch::Tensor& initial,
     torch::Tensor& posterior,
     torch::Tensor& trellis_tensor,
-    torch::Tensor& probability) {
+    torch::Tensor& probability
+) {
 
     int batch_size = observation.size(0);
     int max_frames = observation.size(1);
@@ -54,7 +55,6 @@ void viterbi_make_trellis_mps(
         NSError *error = nil;
 
         // Load the custom viterbi shader.
-        // std::cout << "source: " << viterbi_mps_lib.c_str() << std::endl;
         id<MTLLibrary> kernelLibrary = [device newLibraryWithSource:[NSString stringWithUTF8String:viterbi_mps_lib.c_str()]
                                                                   options:nil
                                                                     error:&error];
@@ -117,7 +117,6 @@ void viterbi_make_trellis_mps(
             // Commit the work.
             torch::mps::commit();
         });
-        // TORCH_CHECK(false, "IT'S ME");
     }
 
 }
@@ -141,27 +140,76 @@ void viterbi_make_trellis_mps(
 ///   indices: :math:`(N, T)`
 ///     The decoded bin indices
 void viterbi_backtrace_trellis_mps(
-    int *indices,
-    int *trellis,
-    int *batch_frames,
+    const torch::Tensor& indices,
+    const torch::Tensor& trellis,
+    const torch::Tensor& batch_frames,
     int batch_size,
     int max_frames,
-    int states) {
-    // #pragma omp parallel for
-    at::parallel_for(0, batch_size, 0, [&](int64_t begin, int64_t end){
-        for (int b = begin; b < end; b++) {
-            int *indices_b = indices + max_frames * b;
-            int *trellis_b = trellis + max_frames * states * b;
-            int frames = batch_frames[b];
-            int index = indices_b[frames - 1];
-            for (int t = frames - 1; t >= 1; t--) {
-                index = trellis_b[t * states + index];
-                indices_b[t - 1] = index;
+    int states
+) {
+   @autoreleasepool {
+        id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+        NSError *error = nil;
+
+        // Load the custom viterbi shader.
+        id<MTLLibrary> kernelLibrary = [device newLibraryWithSource:[NSString stringWithUTF8String:viterbi_mps_lib.c_str()]
+                                                                  options:nil
+                                                                    error:&error];
+        TORCH_CHECK(kernelLibrary, "Failed to to create custom kernel library, error: ", error.localizedDescription.UTF8String);
+
+        std::string kernel_name = std::string("viterbi_backtrace_trellis_kernel");
+        id<MTLFunction> viterbiDecodeFunction = [kernelLibrary newFunctionWithName:[NSString stringWithUTF8String:kernel_name.c_str()]];
+        TORCH_CHECK(viterbiDecodeFunction, "Failed to create function state object for ", kernel_name.c_str());
+
+        // Create a compute pipeline state object for the viterbi decoding kernel.
+        id<MTLComputePipelineState> viterbiPSO = [device newComputePipelineStateWithFunction:viterbiDecodeFunction error:&error];
+        TORCH_CHECK(viterbiPSO, error.localizedDescription.UTF8String);
+
+        // Get a reference to the command buffer for the MPS stream.
+        id<MTLCommandBuffer> commandBuffer = torch::mps::get_command_buffer();
+        TORCH_CHECK(commandBuffer, "Failed to retrieve command buffer reference");
+
+        // Get a reference to the dispatch queue for the MPS stream, which encodes the synchronization with the CPU.
+        dispatch_queue_t serialQueue = torch::mps::get_dispatch_queue();
+
+        dispatch_sync(serialQueue, ^(){
+            // ensure the commandBuffer is free
+            torch::mps::commit();
+
+            // Start a compute pass.
+            id<MTLComputeCommandEncoder> computeEncoder = [commandBuffer computeCommandEncoder];
+            TORCH_CHECK(computeEncoder, "Failed to create compute command encoder");
+
+            // Encode the pipeline state object and its parameters.
+            [computeEncoder setComputePipelineState:viterbiPSO];
+            [computeEncoder setBuffer:getMTLBufferStorage(indices) offset:indices.storage_offset() * indices.element_size() atIndex:0];
+            [computeEncoder setBuffer:getMTLBufferStorage(trellis) offset:trellis.storage_offset() * trellis.element_size() atIndex:1];
+            [computeEncoder setBuffer:getMTLBufferStorage(batch_frames) offset:batch_frames.storage_offset() * batch_frames.element_size() atIndex:2];
+            [computeEncoder setBytes:&max_frames length:sizeof(int) atIndex:3];
+            [computeEncoder setBytes:&states length:sizeof(int) atIndex:4];
+
+            MTLSize gridSize = MTLSizeMake(batch_size, 1, 1);
+
+            // Calculate a thread group size.
+            NSUInteger threadGroupSize = viterbiPSO.maxTotalThreadsPerThreadgroup;
+            if (threadGroupSize > batch_size) {
+                threadGroupSize = batch_size;
             }
-        }
-    });
+            MTLSize threadgroupSize = MTLSizeMake(threadGroupSize, 1, 1);
+
+            // Encode the compute command.
+            [computeEncoder dispatchThreads:gridSize
+                      threadsPerThreadgroup:threadgroupSize];
+
+            [computeEncoder endEncoding];
+
+            // Commit the work.
+            torch::mps::commit();
+        });
+    }
 }
 
+// TODO remove
 void viterbi_backtrace_trellis_cpu(
     int *indices,
     int *trellis,
@@ -234,46 +282,29 @@ torch::Tensor viterbi_decode_mps(
     indices = indices.repeat({1, max_frames});
     indices = indices.to(torch::kInt32);
 
-    torch::Tensor indices_cpu = indices.cpu();
-    torch::Tensor trellis_cpu = trellis.cpu();
-    torch::Tensor batch_frames_contig_cpu = batch_frames_contig.cpu();
+    // torch::Tensor indices_cpu = indices.cpu();
+    // torch::Tensor trellis_cpu = trellis.cpu();
+    // torch::Tensor batch_frames_contig_cpu = batch_frames_contig.cpu();
 
-    // int* indices_ptr = indices_cpu.data_ptr<int>();
-    // int* trellis_ptr = trellis_cpu.data_ptr<int>();
-    // int* batch_frames_ptr = batch_frames_cpu.data_ptr<int>();
-
-    viterbi_backtrace_trellis_cpu(
-        indices_cpu.data_ptr<int>(),
-        trellis_cpu.data_ptr<int>(),
-        batch_frames_contig_cpu.data_ptr<int>(),
-        batch_size,
-        max_frames,
-        states);
-
-    // for (int b = 0; b < batch_size; b++) {
-    //     int *indices_b = indices_ptr + max_frames * b;
-    //     int *trellis_b = trellis_ptr + max_frames * states * b;
-    //     int frames = batch_frames_ptr[b];
-    //     int index = indices_b[frames - 1];
-    //     for (int t = frames - 1; t >= 1; t--) {
-    //         index = trellis_b[t * states + index];
-    //         indices_b[t - 1] = index;
-    //     }
-    // }
-
-    // Second step: backtrace trellis to find maximum likelihood path
-    // omp_set_num_threads(num_threads);
-    // viterbi_backtrace_trellis_mps(
-    //     indices.data_ptr<int>(),
-    //     trellis.data_ptr<int>(),
-    //     batch_frames_contig.data_ptr<int>(),
+    // viterbi_backtrace_trellis_cpu(
+    //     indices_cpu.data_ptr<int>(),
+    //     trellis_cpu.data_ptr<int>(),
+    //     batch_frames_contig_cpu.data_ptr<int>(),
     //     batch_size,
     //     max_frames,
     //     states);
 
-    // TORCH_CHECK(false, "HELLO THERE!");
-    // torch::Device device(torch::kMPS);
-    return indices_cpu;
+    // Second step: backtrace trellis to find maximum likelihood path
+    // omp_set_num_threads(num_threads);
+    viterbi_backtrace_trellis_mps(
+        indices,
+        trellis,
+        batch_frames_contig,
+        batch_size,
+        max_frames,
+        states);
+
+    return indices;
 }
 
 TORCH_LIBRARY_IMPL(torbi, MPS, m) {

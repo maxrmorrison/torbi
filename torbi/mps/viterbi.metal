@@ -90,3 +90,30 @@ kernel void viterbi_make_trellis_kernel(
     }
     threadgroup_barrier(mem_flags::mem_threadgroup | mem_flags::mem_device);
 }
+
+
+kernel void viterbi_backtrace_trellis_kernel(
+    device int* indices,
+    device int* trellis,
+    device int* batch_frames,
+    constant int& max_frames,
+    constant int& states,
+    uint global_thread_id [[thread_position_in_grid]]
+) {
+    int b = global_thread_id;
+    // Get location to store maximum likelihood path
+    device int *indices_b = indices + max_frames * b;
+
+    // Get trellis to backtrace
+    device int *trellis_b = trellis + max_frames * states * b;
+
+    // Get number of frames
+    int frames = batch_frames[b];
+
+    // Backtrace
+    int index = indices_b[frames - 1];
+    for (int t = frames - 1; t >= 1; t--) {
+        index = trellis_b[t * states + index];
+        indices_b[t - 1] = index;
+    }
+}
