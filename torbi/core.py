@@ -144,7 +144,10 @@ def from_probabilities(
             shape=(batch, frames)
     """
     batch, frames, states = observation.shape
-    device = 'cpu' if gpu is None else f'cuda:{gpu}'
+    if gpu == 'mps':
+        device = torch.device('mps')
+    else:
+        device = 'cpu' if gpu is None else f'cuda:{gpu}'
 
     if batch_frames is None:
         batch_frames = torch.full(

@@ -31,6 +31,8 @@ assert (
 ), f"Expected one _C*.so file, found {len(so_files)}"
 torch.ops.load_library(so_files[0])
 
+if torch.backends.mps.is_available():
+    from . import mps
 from .viterbi import decode
 from .core import *
 from .chunk import chunk

@@ -19,8 +19,7 @@ def parse_args():
         help='The datasets to evaluate')
     parser.add_argument(
         '--gpu',
-        type=int,
-        help='The index of the gpu to use for evaluation')
+        help='The index of the gpu to use for evaluation, or "mps"')
     parser.add_argument(
         '--num_threads',
         type=int,
