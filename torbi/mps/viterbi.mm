@@ -1,13 +1,14 @@
 
-#include <torch/extension.h>
+#include <torch/library.h>
+#include <torch/mps.h>
 #include "viterbi.h"
 #include "ATen/ATen.h"
 
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 
-// Helper function to retrieve the `MTLBuffer` from a `torch::Tensor`.
-static inline id<MTLBuffer> getMTLBufferStorage(const torch::Tensor& tensor) {
+// Helper function to retrieve the `MTLBuffer` from a `at::Tensor`.
+static inline id<MTLBuffer> getMTLBufferStorage(const at::Tensor& tensor) {
   return __builtin_bit_cast(id<MTLBuffer>, tensor.storage().data());
 }
 
@@ -37,13 +38,13 @@ C++ MPS implementation of Viterbi decoding
 ///   trellis: :math:`(N, T, S)`
 ///     Matrix of minimum path indices for backtracing
 void viterbi_make_trellis_mps(
-    const torch::Tensor& observation,
-    const torch::Tensor& batch_frames,
-    const torch::Tensor& transition,
-    const torch::Tensor& initial,
-    torch::Tensor& posterior,
-    torch::Tensor& trellis_tensor,
-    torch::Tensor& probability
+    const at::Tensor& observation,
+    const at::Tensor& batch_frames,
+    const at::Tensor& transition,
+    const at::Tensor& initial,
+    at::Tensor& posterior,
+    at::Tensor& trellis_tensor,
+    at::Tensor& probability
 ) {
 
     int batch_size = observation.size(0);
@@ -140,9 +141,9 @@ void viterbi_make_trellis_mps(
 ///   indices: :math:`(N, T)`
 ///     The decoded bin indices
 void viterbi_backtrace_trellis_mps(
-    const torch::Tensor& indices,
-    const torch::Tensor& trellis,
-    const torch::Tensor& batch_frames,
+    const at::Tensor& indices,
+    const at::Tensor& trellis,
+    const at::Tensor& batch_frames,
     int batch_size,
     int max_frames,
     int states
@@ -209,35 +210,12 @@ void viterbi_backtrace_trellis_mps(
     }
 }
 
-// TODO remove
-void viterbi_backtrace_trellis_cpu(
-    int *indices,
-    int *trellis,
-    int *batch_frames,
-    int batch_size,
-    int max_frames,
-    int states) {
-    // #pragma omp parallel for
-    at::parallel_for(0, batch_size, 0, [&](int64_t begin, int64_t end){
-        for (int b = begin; b < end; b++) {
-            int *indices_b = indices + max_frames * b;
-            int *trellis_b = trellis + max_frames * states * b;
-            int frames = batch_frames[b];
-            int index = indices_b[frames - 1];
-            for (int t = frames - 1; t >= 1; t--) {
-                index = trellis_b[t * states + index];
-                indices_b[t - 1] = index;
-            }
-        }
-    });
-}
-
 // C++ op dispatching the Metal viterbi shader.
-torch::Tensor viterbi_decode_mps(
-    const torch::Tensor observation,
-    const torch::Tensor batch_frames,
-    const torch::Tensor transition,
-    const torch::Tensor initial) {
+at::Tensor viterbi_decode_mps(
+    const at::Tensor observation,
+    const at::Tensor batch_frames,
+    const at::Tensor transition,
+    const at::Tensor initial) {
 
     int batch_size = observation.size(0);
     int max_frames = observation.size(1);
@@ -248,22 +226,22 @@ torch::Tensor viterbi_decode_mps(
     TORCH_CHECK(transition.device().is_mps(), "transition must be an MPS tensor");
     TORCH_CHECK(initial.device().is_mps(), "initial must be an MPS tensor");
 
-    torch::Tensor observation_contig = observation.contiguous();
-    torch::Tensor batch_frames_contig = batch_frames.contiguous();
-    torch::Tensor transition_contig = transition.contiguous();
-    torch::Tensor initial_contig = initial.contiguous();
+    at::Tensor observation_contig = observation.contiguous();
+    at::Tensor batch_frames_contig = batch_frames.contiguous();
+    at::Tensor transition_contig = transition.contiguous();
+    at::Tensor initial_contig = initial.contiguous();
 
     // Intermediate storage for path indices and costs
-    torch::Tensor trellis = torch::zeros(
+    at::Tensor trellis = at::zeros(
         {batch_size, max_frames, states},
-        torch::TensorOptions().dtype(torch::kInt32).device(torch::kMPS));
-    torch::Tensor posterior = torch::zeros(
+        at::TensorOptions().dtype(at::kInt).device(at::kMPS));
+    at::Tensor posterior = at::zeros(
         {batch_size, states},
-        torch::TensorOptions().dtype(torch::kFloat32).device(torch::kMPS));
+        at::TensorOptions().dtype(at::kFloat).device(at::kMPS));
 
-    torch::Tensor probability = torch::zeros(
+    at::Tensor probability = at::zeros(
         {states*states},
-        torch::TensorOptions().dtype(torch::kFloat32).device(torch::kMPS));
+        at::TensorOptions().dtype(at::kFloat).device(at::kMPS));
 
     // First step: make the minimum cost path trellis
     viterbi_make_trellis_mps(
@@ -277,14 +255,14 @@ torch::Tensor viterbi_decode_mps(
 
     // return posterior;
 
-    torch::Tensor indices = posterior.argmax(1);
+    at::Tensor indices = posterior.argmax(1);
     indices = indices.unsqueeze(1);
     indices = indices.repeat({1, max_frames});
-    indices = indices.to(torch::kInt32);
+    indices = indices.to(at::kInt);
 
-    // torch::Tensor indices_cpu = indices.cpu();
-    // torch::Tensor trellis_cpu = trellis.cpu();
-    // torch::Tensor batch_frames_contig_cpu = batch_frames_contig.cpu();
+    // at::Tensor indices_cpu = indices.cpu();
+    // at::Tensor trellis_cpu = trellis.cpu();
+    // at::Tensor batch_frames_contig_cpu = batch_frames_contig.cpu();
 
     // viterbi_backtrace_trellis_cpu(
     //     indices_cpu.data_ptr<int>(),
