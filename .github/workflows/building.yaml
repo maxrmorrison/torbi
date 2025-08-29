@@ -68,6 +68,8 @@ jobs:
       - name: Install CUDA ${{ matrix.cuda-version }}
         if: ${{ matrix.cuda-version != 'cpu' }} && ${{ runner.os == 'Linux' }}
         run: |
+          CUDA_VERSION_STRING=${{ matrix.cuda-version }}
+          echo "($CUDA_VERSION_STRING)"
           ver=${CUDA_VERSION_STRING#cu}
           major=${ver:0:2}
           minor=${ver:2:1}
