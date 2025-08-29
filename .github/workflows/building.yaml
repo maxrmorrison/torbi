@@ -124,7 +124,7 @@ jobs:
         if: ${{ matrix.cuda-version != 'cpu' }}
         run: |
           TORCH_CUDA_ARCH_LIST="7.5;8.0;8.6;8.7;8.9;9.0"
-          # FORCE_CUDA=1 python -m build --wheel --no-isolation
+          FORCE_CUDA=1 python -m build --wheel --no-isolation
         shell:
           bash
 
