@@ -13,41 +13,37 @@ jobs:
       fail-fast: false
       matrix:
         # os: [ubuntu-22.04, macos-14, windows-2022, ubuntu-22.04-arm]
-        os: [ubuntu-22.04]
-        # python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
-        python-version: ['3.12']
-        torch-version: [2.8.0]
-        # cuda-version: ['cpu', 'cu118', 'cu124', 'cu126', 'cu128', 'cu129']
-        cuda-version: ['cpu', 'cu129', 'cu128']
-        # exclude:
-        #   - torch-version: 2.6.0
-        #     cuda-version: 'cu128'
-        #   - torch-version: 2.7.0
-        #     cuda-version: 'cu124'
-        #   - torch-version: 2.8.0
-        #     cuda-version: 'cu124'
-        #   - torch-version: 2.8.0
-        #     cuda-version: 'cu118'
-        #   - os: macos-14
-        #     cuda-version: 'cu118'
-        #   - os: macos-14
-        #     cuda-version: 'cu124'
-        #   - os: macos-14
-        #     cuda-version: 'cu126'
-        #   - os: macos-14
-        #     cuda-version: 'cu128'
-        #   - os: macos-14
-        #     cuda-version: 'cu129'
-        #   - os: ubuntu-22.04-arm
-        #     cuda-version: 'cu118'
-        #   - os: ubuntu-22.04-arm
-        #     cuda-version: 'cu124'
-        #   - os: ubuntu-22.04-arm
-        #     cuda-version: 'cu126'
-        #   - os: ubuntu-22.04-arm
-        #     cuda-version: 'cu128'
-        #   - os: ubuntu-22.04-arm
-        #     cuda-version: 'cu129'
+        os: [ubuntu-22.04, macos-14]
+        python-version: ['3.9']
+        torch-version: ['2.6.0', '2.7.0', '2.7.1', '2.8.0']
+        cuda-version: ['cpu', 'cu124', 'cu126', 'cu128', 'cu129']
+        exclude:
+          - torch-version: 2.6.0
+            cuda-version: 'cu128'
+          - torch-version: 2.6.0
+            cuda-version: 'cu129'
+
+          - torch-version: 2.7.0
+            cuda-version: 'cu124'
+          - torch-version: 2.7.0
+            cuda-version: 'cu129'
+
+          - torch-version: 2.7.1
+            cuda-version: 'cu124'
+          - torch-version: 2.7.1
+            cuda-version: 'cu129'
+
+          - torch-version: 2.8.0
+            cuda-version: 'cu124'
+
+          - os: macos-14
+            cuda-version: 'cu124'
+          - os: macos-14
+            cuda-version: 'cu126'
+          - os: macos-14
+            cuda-version: 'cu128'
+          - os: macos-14
+            cuda-version: 'cu129'
 
     steps:
       - uses: actions/checkout@v2
@@ -86,7 +82,7 @@ jobs:
 
       - name: Install PyTorch ${{ matrix.torch-version }}+${{ matrix.cuda-version }}
         run: |
-          pip install torch==${{ matrix.torch-version }} --extra-index-url https://download.pytorch.org/whl/${{ matrix.cuda-version }}
+          pip install torch==${{ matrix.torch-version }} torchaudio==${{ matrix.torch-version }} --extra-index-url https://download.pytorch.org/whl/${{ matrix.cuda-version }}
           python -c "import torch; print('PyTorch:', torch.__version__)"
           python -c "import torch; print('CUDA:', torch.version.cuda)"
 
