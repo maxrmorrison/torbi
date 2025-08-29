@@ -18,7 +18,7 @@ jobs:
         python-version: ['3.12']
         torch-version: [2.8.0]
         # cuda-version: ['cpu', 'cu118', 'cu124', 'cu126', 'cu128', 'cu129']
-        cuda-version: ['cpu', 'cu129']
+        cuda-version: ['cpu', 'cu129', 'cu128']
         # exclude:
         #   - torch-version: 2.6.0
         #     cuda-version: 'cu128'
@@ -120,13 +120,13 @@ jobs:
         shell:
           bash
 
-      # - name: Build wheel for GPU
-      #   if: ${{ matrix.cuda-version != 'cpu' }}
-      #   run: |
-      #     source .github/workflows/cuda/${{ matrix.cuda-version }}-${{ runner.os }}-env.sh
-      #     FORCE_CUDA=1 python setup.py bdist_wheel --dist-dir=dist
-      #   shell:
-      #     bash
+      - name: Build wheel for GPU
+        if: ${{ matrix.cuda-version != 'cpu' }}
+        run: |
+          TORCH_CUDA_ARCH_LIST="7.5;8.0;8.6;8.7;8.9;9.0"
+          # FORCE_CUDA=1 python -m build --wheel --no-isolation
+        shell:
+          bash
 
       - name: Upload wheels as artifact
         uses: actions/upload-artifact@v4
