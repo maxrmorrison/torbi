@@ -37,10 +37,6 @@ def get_extensions():
 
     if windows:
         cxx_args = ['/O2', '/openmp']
-        cxx_args = [
-            "/O2" if not debug_mode else "/Od",
-            ['/O2', '/openmp']
-        ]
         if debug_mode:
             raise ValueError('debug_mode not currently supported on windows')
     elif macos:
