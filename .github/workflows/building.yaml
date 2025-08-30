@@ -58,6 +58,15 @@ jobs:
           pip install --upgrade setuptools
           pip install wheel
 
+      - uses: actions/github-script@v7
+        if: ${{ runner.os != 'macOS' && matrix.cuda-version != 'cpu'}}
+        id: cuda_ver
+        with:
+          script: |
+            const n = '${{ matrix.cuda-version }}'.replace(/^cu/,'');  // 129
+            return `${n.slice(0,2)}.${n.slice(2)}.0`;          // 12.9.0
+      - run: echo "CUDA=${{ steps.cuda_ver.outputs.result }}"
+
       - name: Free Disk Space (Ubuntu)
         if: ${{ runner.os == 'Linux' }}
         uses: jlumbroso/free-disk-space@main
@@ -79,15 +88,6 @@ jobs:
       #     echo "/usr/local/cuda-$major.$minor/bin" >> $GITHUB_PATH
       #     echo "LD_LIBRARY_PATH=/usr/local/cuda-$major.$minor/lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       #     echo $GITHUB_ENV
-
-      - uses: actions/github-script@v7
-        if: ${{ runner.os != 'macOS' && matrix.cuda-version != 'cpu'}}
-        id: cuda_ver
-        with:
-          script: |
-            const n = '${{ matrix.cuda-version }}'.replace(/^cu/,'');  // 129
-            return `${n.slice(0,2)}.${n.slice(2)}.0`;          // 12.9.0
-      - run: echo "CUDA=${{ steps.cuda_ver.outputs.result }}"
 
       - uses: Jimver/cuda-toolkit@master
         if: ${{ runner.os != 'macOS' && matrix.cuda-version != 'cpu'}}
