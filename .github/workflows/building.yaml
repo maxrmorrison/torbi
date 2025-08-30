@@ -84,7 +84,7 @@ jobs:
         id: cuda_ver
         with:
           script: |
-            const n = '${{ matrix.cuda }}'.replace(/^cu/,'');  // 129
+            const n = '${{ matrix.cuda-version }}'.replace(/^cu/,'');  // 129
             return `${n.slice(0,2)}.${n.slice(2)}.0`;          // 12.9.0
       - run: echo "CUDA=${{ steps.cuda_ver.outputs.result }}"
 
