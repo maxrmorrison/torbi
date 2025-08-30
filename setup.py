@@ -36,7 +36,11 @@ def get_extensions():
     macos = platform.system() == "Darwin"
 
     if windows:
-        cxx_args = ['/O2', '/openmp']
+        cxx_args = [
+            '/O2',
+            '/openmp'
+            '/D Py_LIMITED_API=0x03090000' # min CPython version 3.9
+        ]
         if debug_mode:
             raise ValueError('debug_mode not currently supported on windows')
     elif macos:
@@ -48,6 +52,7 @@ def get_extensions():
             # '-lomp',
             "-O3" if not debug_mode else "-O0",
             "-fdiagnostics-color=always",
+            "-DPy_LIMITED_API=0x03090000",  # min CPython version 3.9
         ]
     else: # linux
         cxx_args = [
