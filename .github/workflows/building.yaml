@@ -90,6 +90,7 @@ jobs:
       - run: echo "CUDA=${{ steps.cuda_ver.outputs.result }}"
 
       - uses: Jimver/cuda-toolkit@master
+        if: ${{ runner.os != 'macOS' && matrix.cuda-version != 'cpu'}}
         id: cuda-toolkit
         with:
           cuda: ${{ steps.cuda_ver.outputs.result }}
