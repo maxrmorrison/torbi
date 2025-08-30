@@ -90,11 +90,12 @@ jobs:
       #     echo "LD_LIBRARY_PATH=/usr/local/cuda-$major.$minor/lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       #     echo $GITHUB_ENV
 
-      - uses: Jimver/cuda-toolkit@master
+      - uses: Jimver/cuda-toolkit@v0.2.24
         if: ${{ runner.os != 'macOS' && matrix.cuda-version != 'cpu'}}
         id: cuda-toolkit
         with:
           cuda: ${{ steps.cuda_ver.outputs.result }}
+          log-file-suffix: '${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.torch-version }}-${{ matrix.cuda-version }}.txt'
 
       - name: Install PyTorch ${{ matrix.torch-version }}+${{ matrix.cuda-version }}
         run: |
