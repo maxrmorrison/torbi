@@ -37,8 +37,7 @@ if torch.backends.mps.is_available():
         import ninja
         from . import mps
     except ImportError:
-        warnings.warn("ninja is not installed, so the mps backend cannot be loaded. " \
-        "Please install torbi with the `torbi[mps]` backend")
+        warnings.warn("ninja is not installed, so the mps backend cannot be loaded.")
     except RuntimeError as e:
         warnings.warn("Could not compile mps backend:", e)
 
