@@ -1,4 +1,3 @@
-import penn
 import torch
 import torchutil
 
@@ -13,6 +12,11 @@ import torbi
 @torchutil.notify('preprocess')
 def datasets(datasets, gpu=None):
     """Preprocess a dataset"""
+    try:
+        import penn
+    except ImportError:
+        raise ImportError("penn is required for evaluation. Please install torbi with `torbi[evaluate]`")
+
     for dataset in datasets:
 
         # Get cache directory

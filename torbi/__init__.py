@@ -32,7 +32,16 @@ assert (
 torch.ops.load_library(so_files[0])
 
 if torch.backends.mps.is_available():
-    from . import mps
+    import warnings
+    try:
+        import ninja
+        from . import mps
+    except ImportError:
+        warnings.warn("ninja is not installed, so the mps backend cannot be loaded. " \
+        "Please install torbi with the `torbi[mps]` backend")
+    except RuntimeError as e:
+        warnings.warn("Could not compile mps backend:", e)
+
 from .viterbi import decode
 from .core import *
 from .chunk import chunk

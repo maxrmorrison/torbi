@@ -1,6 +1,5 @@
 import json
 
-import penn
 import torch
 import torchutil
 
@@ -15,6 +14,12 @@ import torbi
 def datasets(datasets, gpu=None, num_threads=1):
     """Evaluate Viterbi decoding methods"""
     # Cache transition matrix
+
+    try:
+        import penn
+    except ImportError:
+        raise ImportError("penn is required for evaluation. Please install torbi with `torbi[evaluate]`")
+
     if not torbi.PITCH_TRANSITION_MATRIX.exists():
         xx, yy = torch.meshgrid(
             torch.arange(penn.PITCH_BINS),

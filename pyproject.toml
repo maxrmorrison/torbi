@@ -36,6 +36,9 @@ evaluate = [
     "pytest",
     "penn"
 ]
+mps = [
+    "ninja"
+]
 
 [tool.setuptools.package-data]
-torbi = ["assets/*", "assets/*/*"]
+torbi = ["assets/*", "assets/*/*", "mps/*.mm", "mps/*.metal", "mps/*.h"]
