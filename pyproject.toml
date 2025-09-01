@@ -1,14 +1,20 @@
 [build-system]
+# This is so stupid
 requires = [
     "setuptools>=61.0,<70",
     "numpy",
-    "torch"
+    "torch; platform_system != 'Windows'",
+    "torch @ https://download.pytorch.org/whl/cu129/torch-2.8.0%2Bcu129-cp39-cp39-win_amd64.whl ; platform_system == 'Windows' and python_version == '3.9'",
+    "torch @ https://download.pytorch.org/whl/cu129/torch-2.8.0%2Bcu129-cp310-cp310-win_amd64.whl ; platform_system == 'Windows' and python_version == '3.10'",
+    "torch @ https://download.pytorch.org/whl/cu129/torch-2.8.0%2Bcu129-cp311-cp311-win_amd64.whl ; platform_system == 'Windows' and python_version == '3.11'",
+    "torch @ https://download.pytorch.org/whl/cu129/torch-2.8.0%2Bcu129-cp312-cp312-win_amd64.whl ; platform_system == 'Windows' and python_version == '3.12'",
+    "torch @ https://download.pytorch.org/whl/cu129/torch-2.8.0%2Bcu129-cp313-cp313-win_amd64.whl ; platform_system == 'Windows' and python_version == '3.13'"
 ]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "torbi"
-version = "1.3.2"
+version = "1.3.3"
 authors = [
   { name="Cameron Churchwell", email="cameronchurchwell2024@u.northwestern.edu" },
   { name="Max Morrison", email="maxrmorrison@gmail.com" },

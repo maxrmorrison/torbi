@@ -25,11 +25,19 @@ import torch
 # load the library .so
 # taken from https://docs.pytorch.org/tutorials/advanced/cpp_custom_ops.html
 from pathlib import Path
-so_files = list(Path(__file__).parent.glob("_C*.so"))
-assert (
-    len(so_files) == 1
-), f"Expected one _C*.so file, found {len(so_files)}"
-torch.ops.load_library(so_files[0])
+import platform
+if platform.system() == "Windows":
+    pyd_files = list(Path(__file__).parent.glob("_C*.pyd"))
+    assert (
+        len(pyd_files) == 1
+    ), f"Expected one _C*.pyd file, found {len(pyd_files)}"
+    torch.ops.load_library(pyd_files[0])
+else:
+    so_files = list(Path(__file__).parent.glob("_C*.so"))
+    assert (
+        len(so_files) == 1
+    ), f"Expected one _C*.so file, found {len(so_files)}"
+    torch.ops.load_library(so_files[0])
 
 if torch.backends.mps.is_available():
     import warnings
