@@ -102,6 +102,7 @@ jobs:
           pip install torch==${{ matrix.torch-version }} torchaudio==${{ matrix.torch-version }} --extra-index-url https://download.pytorch.org/whl/${{ matrix.cuda-version }}
           python -c "import torch; print('PyTorch:', torch.__version__)"
           python -c "import torch; print('CUDA:', torch.version.cuda)"
+          python -c "import torch; print('cuda_available:', torch.cuda.is_available())"
 
       - name: Install Build Deps
         run: |
@@ -136,6 +137,7 @@ jobs:
       - name: Build wheel for GPU
         if: ${{ matrix.cuda-version != 'cpu' }}
         run: |
+          python -c "import torch; print('cuda_available:', torch.cuda.is_available())"
           TORCH_CUDA_ARCH_LIST="7.5;8.0;8.6;8.7;8.9;9.0"
           FORCE_CUDA=1 python -m build --wheel --no-isolation
         shell:
