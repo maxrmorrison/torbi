@@ -26,7 +26,7 @@ def get_extensions():
     if debug_mode:
         print("Compiling in debug mode")
 
-    use_cuda = use_cuda and torch.cuda.version is not None and CUDA_HOME is not None
+    use_cuda = use_cuda and torch.version.cuda is not None and CUDA_HOME is not None
     extension = CUDAExtension if use_cuda else CppExtension
 
     if use_cuda:
