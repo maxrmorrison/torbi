@@ -170,3 +170,53 @@ jobs:
           path: build/*.pyd
           if-no-files-found: error
           retention-days: 14
+  fat-wheel:
+    runs-on: ${{ matrix.os }}
+    needs: [wheel]
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-14, windows-2022]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Grab library files
+        uses: actions/download-artifact@v5
+        with:
+          pattern: lib-${{ matrix.os }}*
+          merge-multiple: true
+          path: torbi/
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Upgrade pip
+        run: |
+          pip install --upgrade setuptools
+          pip install wheel
+
+      - name: Free Disk Space (Ubuntu)
+        if: ${{ runner.os == 'Linux' }}
+        uses: jlumbroso/free-disk-space@main
+
+      - name: Install Build Deps
+        run: |
+          pip install build twine "setuptools<70" numpy torch
+
+      - name: Build fat wheel
+        run: |
+          TORBI_FAT=1 python -m build --wheel --no-isolation
+        shell:
+          bash
+
+      - name: Upload wheels as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: dist/*.whl
+          if-no-files-found: error
+          retention-days: 14
