@@ -13,6 +13,8 @@ from pathlib import Path
 import glob
 import warnings
 
+fat = os.environ.get('TORBI_FAT', "0") == "1"
+
 library_name = "torbi"
 
 if torch.__version__ >= "2.6.0":
@@ -97,10 +99,16 @@ def get_extensions():
     return ext_modules
 
 if __name__ == '__main__':
-    setup(
-        ext_modules=get_extensions(),
-        cmdclass={'build_ext': BuildExtension},
-        include_dirs=[np.get_include(), 'torbi'],
-        packages=find_packages(),
-        options={"bdist_wheel": {"py_limited_api": "cp39"}} if py_limited_api else {},
-    )
+    if not fat: # default build behavior
+        setup(
+            ext_modules=get_extensions(),
+            cmdclass={'build_ext': BuildExtension},
+            include_dirs=[np.get_include(), 'torbi'],
+            packages=find_packages(),
+            options={"bdist_wheel": {"py_limited_api": "cp39"}} if py_limited_api else {},
+        )
+    else:
+        setup(
+            packages=find_packages(),
+            options={"bdist_wheel": {"py_limited_api": "cp39"}} if py_limited_api else {},
+        )

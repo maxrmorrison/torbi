@@ -21,10 +21,11 @@ torch_version = ''.join(torch_version.split('.')[:-1])
 cuda_version = torch.version.cuda
 if cuda_version is None:
     cuda_version = 'cpu'
-cuda_version = cuda_version.replace('.', '')
+else:
+    cuda_version = 'cu' + cuda_version.replace('.', '')
 
 # create ptXXcuXXX version string
-binary_version_string = f'pt{torch_version}cu{cuda_version}'
+binary_version_string = f'pt{torch_version}{cuda_version}'
 print(binary_version_string)
 
 # locate binary file

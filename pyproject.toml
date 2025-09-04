@@ -44,4 +44,4 @@ evaluate = [
 ]
 
 [tool.setuptools.package-data]
-torbi = ["assets/*", "assets/*/*", "mps/*.mm", "mps/*.metal", "mps/*.h"]
+torbi = ["assets/*", "assets/*/*", "mps/*.mm", "mps/*.metal", "mps/*.h", "*.so", "*.pyd"]
