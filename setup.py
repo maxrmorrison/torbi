@@ -96,10 +96,11 @@ def get_extensions():
 
     return ext_modules
 
-setup(
-    ext_modules=get_extensions(),
-    cmdclass={'build_ext': BuildExtension},
-    include_dirs=[np.get_include(), 'torbi'],
-    packages=find_packages(),
-    options={"bdist_wheel": {"py_limited_api": "cp39"}} if py_limited_api else {},
-)
+if __name__ == '__main__':
+    setup(
+        ext_modules=get_extensions(),
+        cmdclass={'build_ext': BuildExtension},
+        include_dirs=[np.get_include(), 'torbi'],
+        packages=find_packages(),
+        options={"bdist_wheel": {"py_limited_api": "cp39"}} if py_limited_api else {},
+    )
