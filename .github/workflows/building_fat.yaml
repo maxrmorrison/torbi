@@ -34,7 +34,7 @@ jobs:
           repository: ${{ github.repository }}
           # run-id: ${{ github.event.workflow_run.id }}
           run-id: 17410253039
-          pattern: "lib-${{ matrix.os }}*"
+          pattern: lib-${{ matrix.os }}*
           merge-multiple: true
           path: torbi/
 
