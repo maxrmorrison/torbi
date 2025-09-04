@@ -13,7 +13,7 @@ jobs:
 
   wheel:
     runs-on: ${{ matrix.os }}
-    # if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       actions: read
       contents: read
@@ -21,8 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # os: [ubuntu-22.04, macos-14, windows-2022]
-        os: [macos-14]
+        os: [ubuntu-22.04, macos-14, windows-2022]
 
     steps:
       - uses: actions/checkout@v2
@@ -38,41 +37,34 @@ jobs:
           merge-multiple: true
           path: torbi/
 
-      - name: List Files
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Upgrade pip
         run: |
-            ls torbi
-            ls .
+          pip install --upgrade setuptools
+          pip install wheel
 
-      # - name: Set up Python ${{ matrix.python-version }}
-      #   uses: actions/setup-python@v2
-      #   with:
-      #     python-version: 3.9
+      - name: Free Disk Space (Ubuntu)
+        if: ${{ runner.os == 'Linux' }}
+        uses: jlumbroso/free-disk-space@main
 
-      # - name: Upgrade pip
-      #   run: |
-      #     pip install --upgrade setuptools
-      #     pip install wheel
+      - name: Install Build Deps
+        run: |
+          pip install build twine "setuptools<70" numpy torch
 
-      # - name: Free Disk Space (Ubuntu)
-      #   if: ${{ runner.os == 'Linux' }}
-      #   uses: jlumbroso/free-disk-space@main
+      - name: Build fat wheel
+        run: |
+          TORBI_FAT=1 python -m build --wheel --no-isolation
+        shell:
+          bash
 
-      # - name: Install Build Deps
-      #   run: |
-      #     pip install build twine "setuptools<70" numpy torch
-
-
-
-      # - name: Build wheel for GPU
-      #   run: |
-      #     TORBI_FAT=1 python -m build --wheel --no-isolation
-      #   shell:
-      #     bash
-
-      # - name: Upload wheels as artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: wheels-${{ matrix.os }}
-      #     path: dist/*.whl
-      #     if-no-files-found: error
-      #     retention-days: 14
+      - name: Upload wheels as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: dist/*.whl
+          if-no-files-found: error
+          retention-days: 14
