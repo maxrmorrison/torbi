@@ -111,4 +111,5 @@ if __name__ == '__main__':
         setup(
             packages=find_packages(),
             options={"bdist_wheel": {"py_limited_api": "cp39"}} if py_limited_api else {},
+            has_ext_modules=lambda: True,
         )
