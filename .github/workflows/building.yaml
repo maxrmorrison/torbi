@@ -245,7 +245,7 @@ jobs:
           rm -f dist/*-linux_x86_64.whl
           mv repaired/*.whl dist/
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist
-          password: ${{ secrets.PYPI_API_TOKEN }}
