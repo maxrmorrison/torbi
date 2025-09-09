@@ -220,3 +220,32 @@ jobs:
           path: dist/*.whl
           if-no-files-found: error
           retention-days: 14
+
+  publish:
+    needs: [fat-wheel]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+
+      - name: Repair linux wheels
+        run: |
+          set -euo pipefail
+          python -m pip install -U pip auditwheel
+          mkdir -p repaired
+          for w in dist/*-linux_x86_64.whl; do
+            auditwheel repair --exclude libtorch_cpu.so --exclude libc10.so --exclude libtorch.so -w repaired "$w"
+          done
+          rm -f dist/*-linux_x86_64.whl
+          mv repaired/*.whl dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+          password: ${{ secrets.PYPI_API_TOKEN }}
