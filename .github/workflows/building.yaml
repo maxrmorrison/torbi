@@ -240,7 +240,7 @@ jobs:
           python -m pip install -U pip auditwheel
           mkdir -p repaired
           for w in dist/*-linux_x86_64.whl; do
-            auditwheel repair --exclude libtorch_cpu.so --exclude libc10.so --exclude libtorch.so -w repaired "$w"
+            auditwheel repair --exclude libtorch_cpu.so --exclude libc10.so --exclude libtorch.so --exclude libcudart.so -w repaired "$w"
           done
           rm -f dist/*-linux_x86_64.whl
           mv repaired/*.whl dist/
