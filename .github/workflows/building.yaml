@@ -121,7 +121,7 @@ jobs:
       #     echo "LD_LIBRARY_PATH=/usr/local/cuda-$major.$minor/lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
       #     echo $GITHUB_ENV
 
-      - uses: Jimver/cuda-toolkit@v0.2.24
+      - uses: Jimver/cuda-toolkit@v0.2.35
         if: ${{ runner.os != 'macOS' && matrix.cuda-version != 'cpu'}}
         id: cuda-toolkit
         with:
