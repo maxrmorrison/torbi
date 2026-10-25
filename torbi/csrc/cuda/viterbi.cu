@@ -85,14 +85,13 @@ __global__ void viterbi_make_trellis_kernel(
         int max_index;
         float max_value;
         for (int j = warp_id; j < states; j += num_warps) {
-            // Indices start out as just 0-warpSize for the first warpSize elements in the array
-            max_index = thread_warp_id;
-            // Values start as the first warpSize elements in the row, with row selected by j
-            max_value = posterior_current[thread_warp_id] + transition[j * states + thread_warp_id];
+            // Start every lane at -inf so that lanes with no valid elements
+            // (when states < warpSize) can never win the reduction
+            max_index = 0;
+            max_value = -INFINITY;
 
             // Slide the warp over the row in a linear argmax search (parallelized by threads within the warp)
-            // Note that we start here offset by the warpSize since we already initialized using the first chunk
-            for (int i = thread_warp_id + warpSize; i < states; i += warpSize) {
+            for (int i = thread_warp_id; i < states; i += warpSize) {
                 // Get the new value from the current row at the current offset
                 float new_value = posterior_current[i] + transition[j * states + i];
                 if (new_value > max_value) {
